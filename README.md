@@ -1,16 +1,10 @@
-Truffle Playground
+Combining LMS and Truffle framework
 ==================
-
-Playing with Truffle in Scala.
 
 What do we get if we combine self-modifying AST interpreters ([Truffle](http://www.christianwimmer.at/Publications/Wimmer12b/)) 
 and generative programming ([LMS](http://scala-lms.github.io))?
 
-See 
-[src/test/scala/TruffleLMSTest.scala](src/test/scala/TruffleLMSTest.scala) and
-[src/main/scala/TruffleLMS.scala](src/main/scala/TruffleLMS.scala)
-for some experiments.
-
+This project is based on previous work by Prof. Rompf - [Truffle Playground](https://github.com/TiarkRompf/truffle-playground) and is a final project for CS590 Fall 2014
 
 ### Background
 
@@ -29,7 +23,3 @@ Remember to set `JAVA_HOME`. Use `sbt` to compile and run.
 
 GPLv2
 
-### Disclaimers
-
-One or more authors are employees of Oracle Labs.
-The views expressed here are their own and do not necessarily reflect the views of Oracle. 
