@@ -146,11 +146,10 @@ trait Base {
 
   // access to arguments of Truffle CallTarget
 
-  case class GenericArguments(val values: Array[AnyRef]) extends Arguments
-
   case class GetArg[@specialized T:Typ](index: Int) extends Def[T] {
     def execute(frame: VirtualFrame) = {
-      frame.getArguments(classOf[GenericArguments]).values(index).asInstanceOf[T]
+      val args = frame.getArguments()(0).asInstanceOf[Array[Object]];
+      args(index).asInstanceOf[T]
     }
   }
 
@@ -193,7 +192,7 @@ trait Base {
     val target = runtime.createCallTarget(rootNode)
 
     override def apply(x: T) = {
-      val result = target.call(new GenericArguments(Array(x.asInstanceOf[AnyRef])));
+      val result = target.call(Array(x.asInstanceOf[AnyRef]));
       result.asInstanceOf[U]
     }
   }
@@ -214,17 +213,15 @@ trait Base {
     val target = runtime.createCallTarget(rootNode)
 
     override def apply(x1: T1, x2: T2) = {
-      val result = target.call(new GenericArguments(Array(x1.asInstanceOf[AnyRef],x2.asInstanceOf[AnyRef])));
+      val result = target.call(Array(x1.asInstanceOf[AnyRef],x2.asInstanceOf[AnyRef]));
       result.asInstanceOf[U]
     }
   }
 
 
-  class NestedArguments(val parentFrame: VirtualFrame) extends Arguments
-
-  class LMSNestedRootNode[@specialized T](@(Child @field) val block: Block[T]) extends RootNode {
+   class LMSNestedRootNode[@specialized T](@(Child @field) val block: Block[T]) extends RootNode {
     override def execute(frame: VirtualFrame): AnyRef = {
-      val parentFrame = frame.getArguments(classOf[NestedArguments]).parentFrame;
+      val parentFrame = frame.getArguments()(0);
       block.execute(parentFrame.asInstanceOf[VirtualFrame]).asInstanceOf[AnyRef]
     }
     override def toString = s"LMSNestedRootNode($block)"
@@ -233,7 +230,7 @@ trait Base {
   case class LMSNestedCallNode[@specialized T](@(Child @field) val target: CallTarget, rootNode: LMSNestedRootNode[T]) extends Def[T] {
     override def execute(frame: VirtualFrame): T = {
       if (CompilerDirectives.inInterpreter)
-        target.call(new NestedArguments(frame)).asInstanceOf[T]
+        target.call(frame).asInstanceOf[T]
       else
         rootNode.block.execute(frame).asInstanceOf[T]
     }
@@ -260,7 +257,16 @@ trait Primitives extends Base {
   implicit object boolTyp extends Typ[Boolean] {
     def slotKind = FrameSlotKind.Boolean
   }
+  implicit object arrayTyp extends Typ[Object] {
+    def slotKind = FrameSlotKind.Object
+  }
 
+//case class ArrayRead(@(Child @field) arr: Exp[Array[Object]], @(Child @field) x: Exp[Int]) extends Def[Object]{
+//    def execute(frame: VirtualFrame) = {
+//      arr(x.execute(frame))
+//    }
+//  }
+  
   case class IntPlus(@(Child @field) x: Exp[Int], @(Child @field)y: Exp[Int]) extends Def[Int] {
     def execute(frame: VirtualFrame) = {
       x.execute(frame) + y.execute(frame)
@@ -344,11 +350,11 @@ trait ControlFlow extends Primitives with Base {
 
 }
 
-trait Arrays extends Base {
-  case class ArrayNode{
-    def execute(frame: VirtualFrame): Unit
-  }
-}
+//trait Arrays extends Base {
+//  case class ArrayNode{
+//    def execute(frame: VirtualFrame): Unit
+//  }
+//}
 
 //trait FFT extends Base{
 //     

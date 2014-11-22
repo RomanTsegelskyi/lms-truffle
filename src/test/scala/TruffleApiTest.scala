@@ -379,31 +379,31 @@ class TruffleApiTest extends FunSuite {
  */
   test("ArgumentsTest") {
 
-    class TestArguments(val values: Array[Int]) extends Arguments
-
     class TestRootNode(
       @(Children @field) children: Array[TestArgumentNode]
     ) extends RootNode {
-      @ExplodeLoop override def execute(frame: VirtualFrame): Integer = {
+      @ExplodeLoop override def execute(frame: VirtualFrame): Object = {
         var sum = 0; var i = 0
         while (i < children.length) {
-          sum += children(i).execute(frame); i += 1
+          sum += children(i).execute(frame); 
+          i += 1
         }
-        sum
+        sum.asInstanceOf[Object]
       }
     }
 
     class TestArgumentNode(index: Int) extends Node {
       def execute(frame: VirtualFrame): Int = {
-        frame.getArguments(classOf[TestArguments]).values(index);
+        val args = frame.getArguments()(0).asInstanceOf[Array[Object]];
+        args(index).asInstanceOf[Int]
       }
     }
 
     val runtime = Truffle.getRuntime();
     val rootNode = new TestRootNode(Array(new TestArgumentNode(0), new TestArgumentNode(1)));
     val target = runtime.createCallTarget(rootNode);
-
-    val result = target.call(new TestArguments(Array(20, 22)));
+    val args : Object = Array(new java.lang.Integer(20), new java.lang.Integer(22))
+    val result = target.call(args);
     assert(42 === result);
   }
 

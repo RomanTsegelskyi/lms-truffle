@@ -45,26 +45,26 @@ class TestTruffleLMS extends FunSuite with TruffleLMS {
     The result AST is equivalent to `x0 = 20 + 22; x0`.
   */
 
-  test("constants") {
-    class TestRootNode[T](desc: FrameDescriptor, @(Child @field) var block: Block[T]) extends RootNode(null, desc) {
-      override def execute(frame: VirtualFrame): AnyRef = block.execute(frame).asInstanceOf[AnyRef]
-    }
-
-    def code = {
-      lift(20) + lift(22)
-    }
-
-    runtime = Truffle.getRuntime();
-    frameDescriptor = new FrameDescriptor();
-
-    val rootNode = new TestRootNode(frameDescriptor, reify(code));
-    val target: CallTarget = runtime.createCallTarget(rootNode);
-    val result = target.call();
-    assert(result === 42);
-
-    assert(rootNode.block.toString ===
-      """Assign([0,x0,Int],IntPlus(Const(20),Const(22)))""")
-  }
+//  test("constants") {
+//    class TestRootNode[T](desc: FrameDescriptor, @(Child @field) var block: Block[T]) extends RootNode(null, desc) {
+//      override def execute(frame: VirtualFrame): AnyRef = block.execute(frame).asInstanceOf[AnyRef]
+//    }
+//
+//    def code = {
+//      lift(20) + lift(22)
+//    }
+//
+//    runtime = Truffle.getRuntime();
+//    frameDescriptor = new FrameDescriptor();
+//
+//    val rootNode = new TestRootNode(frameDescriptor, reify(code));
+//    val target: CallTarget = runtime.createCallTarget(rootNode);
+//    val result = target.call();
+//    assert(result === 42);
+//
+//    assert(rootNode.block.toString ===
+//      """Assign([0,x0,Int],IntPlus(Const(20),Const(22)))""")
+//  }
 
   /* 
     Here we do not create a RootNode explicitly but rely on the
@@ -76,6 +76,8 @@ class TestTruffleLMS extends FunSuite with TruffleLMS {
   */
 
   test("arguments") {
+    runtime = Truffle.getRuntime();
+    frameDescriptor = new FrameDescriptor();
     val truffelized = lms { x: Rep[Int] =>
       x + lift(22)
     }
