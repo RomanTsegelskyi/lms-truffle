@@ -55,7 +55,7 @@ trait Base {
   trait Exp[@specialized +T] extends BaseNode {
     def execute(frame: VirtualFrame): T
   }
-
+  
   case class Sym[@specialized T:Typ](val slot: FrameSlot) extends Exp[T] {
     val kind = slot.getKind
     def execute(frame: VirtualFrame): T = {
@@ -64,9 +64,16 @@ trait Base {
           frame.getInt(slot).asInstanceOf[T]
         case FrameSlotKind.Boolean =>
           frame.getBoolean(slot).asInstanceOf[T]
-        //case _ =>
-           // TODO: more cases
-          //frame.getObject(slot).asInstanceOf[T]
+        case FrameSlotKind.Long =>
+          frame.getLong(slot).asInstanceOf[T]
+        case FrameSlotKind.Double =>
+          frame.getDouble(slot).asInstanceOf[T]
+        case FrameSlotKind.Float =>
+          frame.getFloat(slot).asInstanceOf[T]
+        case FrameSlotKind.Byte =>
+          frame.getByte(slot).asInstanceOf[T]
+        case _ =>
+          frame.getObject(slot).asInstanceOf[T]
       }
     }
   }
@@ -96,9 +103,16 @@ trait Base {
           frame.setInt(slot, d.execute(frame).asInstanceOf[Int])
         case FrameSlotKind.Boolean =>
           frame.setBoolean(slot, d.execute(frame).asInstanceOf[Boolean])
-        //case _ =>
-           // TODO: more cases
-          //frame.setObject(slot, d.execute(frame))
+        case FrameSlotKind.Long =>
+          frame.setLong(slot, d.execute(frame).asInstanceOf[Long])
+        case FrameSlotKind.Double =>
+          frame.setDouble(slot, d.execute(frame).asInstanceOf[Double])
+        case FrameSlotKind.Float =>
+          frame.setFloat(slot, d.execute(frame).asInstanceOf[Float])
+        case FrameSlotKind.Byte =>
+          frame.setByte(slot, d.execute(frame).asInstanceOf[Byte])
+        case _ =>
+          frame.setObject(slot, d.execute(frame))
       }
     }
   }
@@ -183,7 +197,8 @@ trait Base {
       try {
         varCount = 0
         frameDescriptor = new FrameDescriptor();
-        new LMSRootNode(frameDescriptor,reify(f(getArg[T](0))));
+        val t = reify(f(getArg[T](0)));
+        new LMSRootNode(frameDescriptor,t);
       } finally {
         //varCount = saveC
         //frameDescriptor = saveD
@@ -196,7 +211,7 @@ trait Base {
       result.asInstanceOf[U]
     }
   }
-
+  
   def lms[T1:Typ,T2:Typ,U:Typ](f: (Rep[T1],Rep[T2]) => Rep[U]) = new ((T1,T2)=>U) {
     val rootNode = {
       val saveC = varCount
@@ -247,155 +262,5 @@ trait Base {
     }
   }
 }
-
-
-trait Primitives extends Base {
-
-  implicit object intTyp extends Typ[Int] {
-    def slotKind = FrameSlotKind.Int
-  }
-  implicit object boolTyp extends Typ[Boolean] {
-    def slotKind = FrameSlotKind.Boolean
-  }
-  implicit object arrayTyp extends Typ[Object] {
-    def slotKind = FrameSlotKind.Object
-  }
-
-//case class ArrayRead(@(Child @field) arr: Exp[Array[Object]], @(Child @field) x: Exp[Int]) extends Def[Object]{
-//    def execute(frame: VirtualFrame) = {
-//      arr(x.execute(frame))
-//    }
-//  }
-  
-  case class IntPlus(@(Child @field) x: Exp[Int], @(Child @field)y: Exp[Int]) extends Def[Int] {
-    def execute(frame: VirtualFrame) = {
-      x.execute(frame) + y.execute(frame)
-    }
-  }
-  case class IntMinus(@(Child @field) x: Exp[Int], @(Child @field)y: Exp[Int]) extends Def[Int] {
-    def execute(frame: VirtualFrame) = {
-      x.execute(frame) - y.execute(frame)
-    }
-  }
-  case class IntTimes(@(Child @field) x: Exp[Int], @(Child @field)y: Exp[Int]) extends Def[Int] {
-    def execute(frame: VirtualFrame) = {
-      x.execute(frame) * y.execute(frame)
-    }
-  }
-  case class IntMod(@(Child @field) x: Exp[Int], @(Child @field)y: Exp[Int]) extends Def[Int] {
-    def execute(frame: VirtualFrame) = {
-      x.execute(frame) % y.execute(frame)
-    }
-  }
-  case class IntDiv(@(Child @field) x: Exp[Int], @(Child @field)y: Exp[Int]) extends Def[Int] {
-    def execute(frame: VirtualFrame) = {
-      x.execute(frame) / y.execute(frame)
-    }
-  }
-  case class IntEqual(@(Child @field) x: Exp[Int], @(Child @field)y: Exp[Int]) extends Def[Boolean] {
-    def execute(frame: VirtualFrame) = {
-      x.execute(frame) == y.execute(frame)
-    }
-  }
-  case class IntLess(@(Child @field) x: Exp[Int], @(Child @field)y: Exp[Int]) extends Def[Boolean] {
-    def execute(frame: VirtualFrame) = {
-      x.execute(frame) < y.execute(frame)
-    }
-  }
-  
-
-  implicit class IntOps(x: Exp[Int]) {
-    def +(y: Exp[Int]): Exp[Int] = reflect(IntPlus(x,y))
-    def -(y: Exp[Int]): Exp[Int] = reflect(IntMinus(x,y))
-    def *(y: Exp[Int]): Exp[Int] = reflect(IntTimes(x,y))
-    def /(y: Exp[Int]): Exp[Int] = reflect(IntDiv(x,y))
-    def ===(y: Exp[Int]): Exp[Boolean] = reflect(IntEqual(x,y))
-    def <(y: Exp[Int]): Exp[Boolean] = reflect(IntLess(x,y))
-    def %(y: Exp[Int]): Exp[Int] = reflect(IntMod(x,y))
-  }
-
-}
-
-
-trait ControlFlow extends Primitives with Base {
-
-  case class Loop(shy: Boolean, @(Child @field)body: Block[Boolean]) extends Def[Boolean] {
-    def execute(frame: VirtualFrame): Boolean = {
-      //println(s"interpreted: ${CompilerDirectives.inInterpreter}")
-      //while(body.execute(frame)) {}
-      while ({
-        if (CompilerAsserts.compilationConstant(shy && CompilerDirectives.inInterpreter)) {
-          if (body.execute(frame)) return true else false
-        } else {
-          body.execute(frame)
-        }
-      }) { }
-      false
-    }
-  }
-
-  def loop(body: => Exp[Boolean]): Exp[Boolean] = reflect(Loop(false,reify(body)))
-
-  def loopShy(body: => Exp[Boolean]): Exp[Boolean] = reflect(Loop(true,reify(body)))
-
-  case class IfElse[@specialized T](c: Exp[Boolean], a: Block[T], b: Block[T]) extends Def[T] {
-    def execute(frame: VirtualFrame): T = {
-      if (c.execute(frame)) a.execute(frame) else b.execute(frame)
-    }
-  }
-
-  def cond[T:Typ](c: Exp[Boolean])(a: => Exp[T])(b: => Exp[T]): Exp[T] = {
-    reflect(IfElse(c, reify(a), reify(b)))
-  }
-
-}
-
-//trait Arrays extends Base {
-//  case class ArrayNode{
-//    def execute(frame: VirtualFrame): Unit
-//  }
-//}
-
-//trait FFT extends Base{
-//     
-//	case class Complex(re: Rep[Double], im: Rep[Double]) {
-//      def +(that: Complex) = Complex(this.re + that.re, this.im + that.im)
-//      def -(that: Complex) = Complex(this.re - that.re, this.im - that.im)
-//      def *(that: Complex) = Complex(this.re * that.re - this.im * that.im, this.re * that.im + this.im * that.re)
-//    }
-//
-//    def splitEvenOdd[T](xs: List[T]): (List[T], List[T]) = (xs: @unchecked) match {
-//      case e :: o :: xt =>
-//        val (es, os) = splitEvenOdd(xt)
-//        ((e :: es), (o :: os))
-//      case Nil => (Nil, Nil)
-//    }
-//
-//    def omega(k: Int, N: Int): Complex = {
-//      val kth = -2.0 * k * math.Pi / N
-//      Complex(cos(kth), sin(kth))
-//    }
-//
-//    def mergeEvenOdd[T](even: List[T], odd: List[T]): List[T] = ((even, odd): @unchecked) match {
-//      case (Nil, Nil) =>
-//        Nil
-//      case ((e :: es), (o :: os)) =>
-//        e :: (o :: mergeEvenOdd(es, os))
-//    }
-//
-//    def fft(xs: List[Complex]): List[Complex] = xs match {
-//      case (x :: Nil) => xs
-//      case _ =>
-//        val N = xs.length // assume it's a power of two
-//        val (even0, odd0) = splitEvenOdd(xs)
-//        val (even1, odd1) = (fft(even0), fft(odd0))
-//        val (even2, odd2) = (even1 zip odd1 zipWithIndex) map {
-//          case ((x, y), k) =>
-//            val z = omega(k, N) * y
-//            (x + z, x - z)
-//        } unzip;
-//        even2 ::: odd2
-//    }
-//}
 
 trait TruffleLMS extends Base with Primitives with ControlFlow

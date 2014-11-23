@@ -1,0 +1,116 @@
+/*
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+import com.oracle.truffle.api._
+import com.oracle.truffle.api.frame._
+import com.oracle.truffle.api.nodes._
+import com.oracle.truffle.api.nodes.Node._
+import scala.annotation.target.field
+import org.scalatest._
+import scala.collection.mutable.ArrayBuffer
+
+trait Primitives extends Base {
+
+  implicit object intTyp extends Typ[Int] {
+    def slotKind = FrameSlotKind.Int
+  }
+  implicit object boolTyp extends Typ[Boolean] {
+    def slotKind = FrameSlotKind.Boolean
+  }
+
+  implicit object doubleTyp extends Typ[Double] {
+    def slotKind = FrameSlotKind.Double
+  }
+
+  implicit object arrayTyp extends Typ[Array[Int]] {
+    def slotKind = FrameSlotKind.Object
+  }
+
+  case class ArrayRead(@(Child @field) arr: Exp[Array[Int]], @(Child @field) x: Exp[Int]) extends Def[Int]{
+    def execute(frame: VirtualFrame) = {
+      arr.execute(frame)(x.execute(frame))
+    }
+  }
+
+  case class IntPlus(@(Child @field) x: Exp[Int], @(Child @field) y: Exp[Int]) extends Def[Int] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) + y.execute(frame)
+    }
+  }
+  case class IntMinus(@(Child @field) x: Exp[Int], @(Child @field) y: Exp[Int]) extends Def[Int] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) - y.execute(frame)
+    }
+  }
+  case class IntTimes(@(Child @field) x: Exp[Int], @(Child @field) y: Exp[Int]) extends Def[Int] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) * y.execute(frame)
+    }
+  }
+  case class IntMod(@(Child @field) x: Exp[Int], @(Child @field) y: Exp[Int]) extends Def[Int] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) % y.execute(frame)
+    }
+  }
+  case class IntDiv(@(Child @field) x: Exp[Int], @(Child @field) y: Exp[Int]) extends Def[Int] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) / y.execute(frame)
+    }
+  }
+  case class IntEqual(@(Child @field) x: Exp[Int], @(Child @field) y: Exp[Int]) extends Def[Boolean] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) == y.execute(frame)
+    }
+  }
+  case class IntLess(@(Child @field) x: Exp[Int], @(Child @field) y: Exp[Int]) extends Def[Boolean] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) < y.execute(frame)
+    }
+  }
+
+  case class DoublePlus(@(Child @field) x: Exp[Double], @(Child @field) y: Exp[Double]) extends Def[Double] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) + y.execute(frame)
+    }
+  }
+  
+  implicit class IntOps(x: Exp[Int]) {
+    def +(y: Exp[Int]): Exp[Int] = reflect(IntPlus(x, y))
+    def -(y: Exp[Int]): Exp[Int] = reflect(IntMinus(x, y))
+    def *(y: Exp[Int]): Exp[Int] = reflect(IntTimes(x, y))
+    def /(y: Exp[Int]): Exp[Int] = reflect(IntDiv(x, y))
+    def ===(y: Exp[Int]): Exp[Boolean] = reflect(IntEqual(x, y))
+    def <(y: Exp[Int]): Exp[Boolean] = reflect(IntLess(x, y))
+    def %(y: Exp[Int]): Exp[Int] = reflect(IntMod(x, y))
+  }
+
+  implicit class DoubleOps(x: Exp[Double]) {
+    def +(y: Exp[Double]): Exp[Double] = reflect(DoublePlus(x, y))
+  }
+
+    
+  implicit class ArrayOps(x: Exp[Array[Int]]) {
+    def apply(y:Exp[Int]): Exp[Int] = reflect(ArrayRead(x,y))
+  }
+
+}
