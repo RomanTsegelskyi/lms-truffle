@@ -36,52 +36,29 @@ import org.scalatest._
   see:  http://hg.openjdk.java.net/graal/graal/file/483d05bf77a7/graal/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test
 */
 
-class TruffleLMSArrayTest extends FunSuite with TruffleLMS {
+class TruffleLMSFFT extends FunSuite with FFT with TruffleLMS {
 
-  test("simple access") {
+  test("fft size 4") {
     runtime = Truffle.getRuntime();
     frameDescriptor = new FrameDescriptor();
     
-    val truffelized = lms {x:Rep[Array[Int]] =>
-    	x(0) + x(1)
+    val truffelized = lms {x:Rep[Array[Double]] =>
+    	val y = NewArray(8);
+        val inList = scala.List.tabulate(4)(i => Complex(x(2*i), x(2*i + 1)))
+        val outList = fft(inList)
+        for (i <- 0 to 3){
+          y(2 * i) = outList(i).re;
+          y(2 * i + 1) = outList(i).im;
+        }
+        y
     }
 
-    var arr = Array(20, 22);
-    val result = truffelized(arr)
-    println(truffelized.rootNode.block.toString)
-    assert(result === 42);
-
-  }
-  
-  test("simple assignment") {
-    runtime = Truffle.getRuntime();
-    frameDescriptor = new FrameDescriptor();
-    
-    val truffelized = lms {x:Rep[Array[Int]] =>
-    	x(0) = 1;
-    	x(0)
-    }
-
-    var arr = Array(20, 22);
-    val result = truffelized(arr)
-    println(truffelized.rootNode.block.toString)
-    assert(result === 1);
-  }
-
-  
-  test("sum array") {
-    runtime = Truffle.getRuntime();
-    frameDescriptor = new FrameDescriptor();
-    
-    val truffelized = lms {x:Rep[Array[Int]] =>
-    	val y = x(0) + x(1)
-    	y
-    }
-
-    var arr = Array(20, 22);
-    val result = truffelized(arr)
-    println(truffelized.rootNode.block.toString)
-    assert(result === 42);
+    val res = truffelized(Array(1.0,0.0, 1.0,0.0, 2.0,0.0, 2.0,0.0));
+    //Array(6.0,0.0,-1.0,1.0,0.0,0.0,-1.0,-1.0)
+    assert(res === Array(6.0, 0.0, -1.0, 1.0, 0.0, 0.0, -0.9999999999999999, -1.0))
+//    println(res)
+ //   println(truffelized.rootNode.block.toString)
+//    assert(result === 1);
   }
 
 }

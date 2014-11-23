@@ -42,23 +42,34 @@ trait Primitives extends Base {
     def slotKind = FrameSlotKind.Double
   }
 
-  implicit object arrayTyp extends Typ[Array[Int]] {
+  implicit object arrayIntTyp extends Typ[Array[Int]] {
+    def slotKind = FrameSlotKind.Object
+  }
+  
+  implicit object arrayDoubleTyp extends Typ[Array[Double]] {
     def slotKind = FrameSlotKind.Object
   }
 
-  case class ArrayRead(@(Child @field) arr: Exp[Array[Int]], @(Child @field) x: Exp[Int]) extends Def[Int] {
+  case class ArrayRead[T](@(Child @field) arr: Exp[Array[T]], @(Child @field) x: Exp[Int]) extends Def[T] {
     def execute(frame: VirtualFrame) = {
       arr.execute(frame)(x.execute(frame))
     }
   }
 
-  case class ArrayUpdate(@(Child @field) arr: Exp[Array[Int]],
+  case class ArrayUpdate[T](@(Child @field) arr: Exp[Array[T]],
     @(Child @field) index: Exp[Int],
-    @(Child @field) element: Exp[Int]) extends Def[Array[Int]] {
+    @(Child @field) element: Exp[T]) extends Def[Array[T]] {
     def execute(frame: VirtualFrame) = {
       val array = arr.execute(frame)
       array(index.execute(frame)) = element.execute(frame)
       array
+    }
+  }
+  
+  case class ArrayNew(@(Child @field) size: Exp[Int]) extends Def[Array[Double]] {
+    def execute(frame: VirtualFrame) = {
+      val s = size.execute(frame);
+      new Array[Double](s);
     }
   }
 
@@ -139,9 +150,17 @@ trait Primitives extends Base {
     def /(y: Exp[Double]): Exp[Double] = reflect(DoubleDiv(x, y))
   }
 
-  implicit class ArrayOps(x: Exp[Array[Int]]) {
+  implicit class ArrayIntOps(x: Exp[Array[Int]]) {
     def apply(y: Exp[Int]): Exp[Int] = reflect(ArrayRead(x, y))
     def update(y: Exp[Int], e: Exp[Int]): Exp[Array[Int]] = reflect(ArrayUpdate(x, y, e)) // why doesn't Exp[Unit] work?
   }
+  
+  implicit class ArrayDoubleOps(x: Exp[Array[Double]]) {
+    def apply(y: Exp[Int]): Exp[Double] = reflect(ArrayRead(x, y))
+    def update(y: Exp[Int], e: Exp[Double]): Exp[Array[Double]] = reflect(ArrayUpdate(x, y, e)) // why doesn't Exp[Unit] work?
+  }
 
+  object NewArray {
+    def apply(n: Exp[Int]) : Exp[Array[Double]] = reflect(ArrayNew(n))
+  }
 }

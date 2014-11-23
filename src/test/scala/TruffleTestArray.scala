@@ -36,7 +36,7 @@ import org.scalatest._
   see:  http://hg.openjdk.java.net/graal/graal/file/483d05bf77a7/graal/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test
 */
 
-class TruffleApiTest extends FunSuite {
+class TruffleTestApi extends FunSuite {
 
 /**
  * <h3>Accessing the Truffle Runtime</h3>
