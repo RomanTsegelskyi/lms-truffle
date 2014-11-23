@@ -46,9 +46,19 @@ trait Primitives extends Base {
     def slotKind = FrameSlotKind.Object
   }
 
-  case class ArrayRead(@(Child @field) arr: Exp[Array[Int]], @(Child @field) x: Exp[Int]) extends Def[Int]{
+  case class ArrayRead(@(Child @field) arr: Exp[Array[Int]], @(Child @field) x: Exp[Int]) extends Def[Int] {
     def execute(frame: VirtualFrame) = {
       arr.execute(frame)(x.execute(frame))
+    }
+  }
+
+  case class ArrayUpdate(@(Child @field) arr: Exp[Array[Int]],
+    @(Child @field) index: Exp[Int],
+    @(Child @field) element: Exp[Int]) extends Def[Array[Int]] {
+    def execute(frame: VirtualFrame) = {
+      val array = arr.execute(frame)
+      array(index.execute(frame)) = element.execute(frame)
+      array
     }
   }
 
@@ -93,7 +103,25 @@ trait Primitives extends Base {
       x.execute(frame) + y.execute(frame)
     }
   }
-  
+
+  case class DoubleMinus(@(Child @field) x: Exp[Double], @(Child @field) y: Exp[Double]) extends Def[Double] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) - y.execute(frame)
+    }
+  }
+
+  case class DoubleTimes(@(Child @field) x: Exp[Double], @(Child @field) y: Exp[Double]) extends Def[Double] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) * y.execute(frame)
+    }
+  }
+
+  case class DoubleDiv(@(Child @field) x: Exp[Double], @(Child @field) y: Exp[Double]) extends Def[Double] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) / y.execute(frame)
+    }
+  }
+
   implicit class IntOps(x: Exp[Int]) {
     def +(y: Exp[Int]): Exp[Int] = reflect(IntPlus(x, y))
     def -(y: Exp[Int]): Exp[Int] = reflect(IntMinus(x, y))
@@ -106,11 +134,14 @@ trait Primitives extends Base {
 
   implicit class DoubleOps(x: Exp[Double]) {
     def +(y: Exp[Double]): Exp[Double] = reflect(DoublePlus(x, y))
+    def -(y: Exp[Double]): Exp[Double] = reflect(DoubleMinus(x, y))
+    def *(y: Exp[Double]): Exp[Double] = reflect(DoubleTimes(x, y))
+    def /(y: Exp[Double]): Exp[Double] = reflect(DoubleDiv(x, y))
   }
 
-    
   implicit class ArrayOps(x: Exp[Array[Int]]) {
-    def apply(y:Exp[Int]): Exp[Int] = reflect(ArrayRead(x,y))
+    def apply(y: Exp[Int]): Exp[Int] = reflect(ArrayRead(x, y))
+    def update(y: Exp[Int], e: Exp[Int]): Exp[Array[Int]] = reflect(ArrayUpdate(x, y, e)) // why doesn't Exp[Unit] work?
   }
 
 }

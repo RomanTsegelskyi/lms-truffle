@@ -38,7 +38,7 @@ import org.scalatest._
 
 class TruffleLMSArrayTest extends FunSuite with TruffleLMS {
 
-  test("arguments") {
+  test("simple access") {
     runtime = Truffle.getRuntime();
     frameDescriptor = new FrameDescriptor();
     
@@ -51,10 +51,38 @@ class TruffleLMSArrayTest extends FunSuite with TruffleLMS {
     println(truffelized.rootNode.block.toString)
     assert(result === 42);
 
-//    assert(truffelized.rootNode.block.toString ===
-//      """Assign([0,x0,Int],GetArg(0))
-//Assign([1,x1,Int],IntPlus(Sym([0,x0,Int]),Const(22)))""")
-
   }
+  
+  test("simple assignment") {
+    runtime = Truffle.getRuntime();
+    frameDescriptor = new FrameDescriptor();
+    
+    val truffelized = lms {x:Rep[Array[Int]] =>
+    	x(0) = 1;
+    	x(0)
+    }
+
+    var arr = Array(20, 22);
+    val result = truffelized(arr)
+    println(truffelized.rootNode.block.toString)
+    assert(result === 1);
+  }
+
+  
+  test("sum array") {
+    runtime = Truffle.getRuntime();
+    frameDescriptor = new FrameDescriptor();
+    
+    val truffelized = lms {x:Rep[Array[Int]] =>
+    	val y = x(0) + x(1)
+    	y
+    }
+
+    var arr = Array(20, 22);
+    val result = truffelized(arr)
+    println(truffelized.rootNode.block.toString)
+    assert(result === 42);
+  }
+
 }
 
