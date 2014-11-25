@@ -33,6 +33,7 @@ import org.scalatest._
 class TestTruffleLMS2 extends FunSuite with TruffleLMS {
 
   runtime = Truffle.getRuntime();
+  frameDescriptor = new FrameDescriptor();
 
   /*
   loop pattern: while (C) becomes

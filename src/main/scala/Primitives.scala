@@ -31,6 +31,10 @@ import scala.collection.mutable.ArrayBuffer
 
 trait Primitives extends Base {
 
+  implicit object unitTyp extends Typ[Unit]{
+    def slotKind = FrameSlotKind.Object
+  }
+  
   implicit object intTyp extends Typ[Int] {
     def slotKind = FrameSlotKind.Int
   }
@@ -41,35 +45,31 @@ trait Primitives extends Base {
   implicit object doubleTyp extends Typ[Double] {
     def slotKind = FrameSlotKind.Double
   }
-
-  implicit object arrayIntTyp extends Typ[Array[Int]] {
+  
+  // probably something here
+  implicit def arrayTyp[T:Typ] = new Typ[Array[T]] {
     def slotKind = FrameSlotKind.Object
   }
   
-  implicit object arrayDoubleTyp extends Typ[Array[Double]] {
-    def slotKind = FrameSlotKind.Object
-  }
-
   case class ArrayRead[T](@(Child @field) arr: Exp[Array[T]], @(Child @field) x: Exp[Int]) extends Def[T] {
     def execute(frame: VirtualFrame) = {
       arr.execute(frame)(x.execute(frame))
     }
   }
 
-  case class ArrayUpdate[T](@(Child @field) arr: Exp[Array[T]],
+  case class ArrayUpdate[T:Typ](@(Child @field) arr: Exp[Array[T]],
     @(Child @field) index: Exp[Int],
-    @(Child @field) element: Exp[T]) extends Def[Array[T]] {
+    @(Child @field) element: Exp[T]) extends Def[Unit] {
     def execute(frame: VirtualFrame) = {
       val array = arr.execute(frame)
       array(index.execute(frame)) = element.execute(frame)
-      array
     }
   }
   
-  case class ArrayNew(@(Child @field) size: Exp[Int]) extends Def[Array[Double]] {
+  case class ArrayNew[T:Manifest](@(Child @field) size: Exp[Int]) extends Def[Array[T]] {
     def execute(frame: VirtualFrame) = {
       val s = size.execute(frame);
-      new Array[Double](s);
+      new Array[T](s);
     }
   }
 
@@ -150,17 +150,13 @@ trait Primitives extends Base {
     def /(y: Exp[Double]): Exp[Double] = reflect(DoubleDiv(x, y))
   }
 
-  implicit class ArrayIntOps(x: Exp[Array[Int]]) {
-    def apply(y: Exp[Int]): Exp[Int] = reflect(ArrayRead(x, y))
-    def update(y: Exp[Int], e: Exp[Int]): Exp[Array[Int]] = reflect(ArrayUpdate(x, y, e)) // why doesn't Exp[Unit] work?
-  }
-  
-  implicit class ArrayDoubleOps(x: Exp[Array[Double]]) {
-    def apply(y: Exp[Int]): Exp[Double] = reflect(ArrayRead(x, y))
-    def update(y: Exp[Int], e: Exp[Double]): Exp[Array[Double]] = reflect(ArrayUpdate(x, y, e)) // why doesn't Exp[Unit] work?
+  // Is it possible to have a unified update class
+  implicit class ArrayOps[T:Typ](x: Exp[Array[T]]) {
+    def apply(y: Exp[Int]): Exp[T] = reflect(ArrayRead[T](x, y))
+    def update(y: Exp[Int], e: Exp[T]): Exp[Unit] = reflect(ArrayUpdate[T](x, y, e)) 
   }
 
   object NewArray {
-    def apply(n: Exp[Int]) : Exp[Array[Double]] = reflect(ArrayNew(n))
+    def apply[T:Typ:Manifest](n: Exp[Int]) : Exp[Array[T]] = reflect(ArrayNew[T](n))
   }
 }
