@@ -43,7 +43,7 @@ class TruffleLMSFFT extends FunSuite with FFT with TruffleLMS {
     frameDescriptor = new FrameDescriptor();
     
     val truffelized = lms {x:Rep[Array[Double]] =>
-    	val y = NewArray(8);
+    	val y = NewArray[Double](8);
         val inList = scala.List.tabulate(4)(i => Complex(x(2*i), x(2*i + 1)))
         val outList = fft(inList)
         for (i <- 0 to 3){

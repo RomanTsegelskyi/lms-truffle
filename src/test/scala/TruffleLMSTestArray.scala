@@ -105,7 +105,7 @@ class TruffleLMSTestArray extends FunSuite with TruffleLMS {
     frameDescriptor = new FrameDescriptor();
     
     val truffelized = lms {x:Rep[Array[Double]] =>
-    	val y = NewArray(2)
+    	val y = NewArray[Double](2)
     	y(0) = x(0) + lift(1)
     	y(1) = x(1) + lift(1)
     }

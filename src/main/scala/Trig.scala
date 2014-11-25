@@ -29,7 +29,7 @@ import scala.annotation.target.field
 import org.scalatest._
 import scala.collection.mutable.ArrayBuffer
 
-// Why can't extend base directly
+// Why can't extend base directly 
 trait Trig extends Primitives {
 
   case class CosNode(@(Child @field) x: Exp[Double]) extends Def[Double] {

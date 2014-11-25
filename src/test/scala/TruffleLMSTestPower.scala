@@ -32,14 +32,16 @@ import scala.virtualization.lms.common.ScalaOpsPkgExp
 
 class TruffleLMSTestPower extends FunSuite with TruffleLMS {
 
+  runtime = Truffle.getRuntime();
+  frameDescriptor = new FrameDescriptor();
+
   /* 
     Now we implement the posterchild of staging examples:
     specializing the `power` function to a fixed exponent.
 
     The Truffle AST contains a function specialized for
     exponent 6.
-  */
-
+  */    
   test("power") {
     val truffelized = lms { x: Rep[Int] =>
 

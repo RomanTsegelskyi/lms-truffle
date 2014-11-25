@@ -31,6 +31,10 @@ import scala.collection.mutable.ArrayBuffer
 
 trait Primitives extends Base {
 
+  implicit object unitTyp extends Typ[Unit]{
+    def slotKind = FrameSlotKind.Object
+  }
+  
   implicit object intTyp extends Typ[Int] {
     def slotKind = FrameSlotKind.Int
   }
@@ -43,7 +47,7 @@ trait Primitives extends Base {
   }
   
   // probably something here
-  implicit object arrayTyp extends Typ[Array[_]] {
+  implicit def arrayTyp[T:Typ] = new Typ[Array[T]] {
     def slotKind = FrameSlotKind.Object
   }
   
@@ -53,13 +57,12 @@ trait Primitives extends Base {
     }
   }
 
-  case class ArrayUpdate[T](@(Child @field) arr: Exp[Array[T]],
+  case class ArrayUpdate[T:Typ](@(Child @field) arr: Exp[Array[T]],
     @(Child @field) index: Exp[Int],
-    @(Child @field) element: Exp[T]) extends Def[Array[T]] {
+    @(Child @field) element: Exp[T]) extends Def[Unit] {
     def execute(frame: VirtualFrame) = {
       val array = arr.execute(frame)
       array(index.execute(frame)) = element.execute(frame)
-      array
     }
   }
   
@@ -148,12 +151,12 @@ trait Primitives extends Base {
   }
 
   // Is it possible to have a unified update class
-  implicit class ArrayOps[T](x: Exp[Array[T]]) {
+  implicit class ArrayOps[T:Typ](x: Exp[Array[T]]) {
     def apply(y: Exp[Int]): Exp[T] = reflect(ArrayRead[T](x, y))
-    def update(y: Exp[Int], e: Exp[T]): Exp[Array[T]] = reflect(ArrayUpdate(x, y, e)) // why doesn't Exp[Unit] work?
+    def update(y: Exp[Int], e: Exp[T]): Exp[Unit] = reflect(ArrayUpdate[T](x, y, e)) 
   }
 
   object NewArray {
-    def apply[T](n: Exp[Int]) : Exp[Array[T]] = reflect(ArrayNew(n))
+    def apply[T:Typ:Manifest](n: Exp[Int]) : Exp[Array[T]] = reflect(ArrayNew[T](n))
   }
 }
