@@ -28,52 +28,38 @@ import com.oracle.truffle.api.nodes.Node._
 import scala.annotation.target.field
 import org.scalatest._
 import scala.collection.mutable.ArrayBuffer
-import math._
 
-// Why can't extend base directly 
-trait Trig extends Primitives {
+trait ArrayType extends Base with Types {
 
-  case class CosNode(@(Child @field) x: Exp[Double]) extends Def[Double] {
+  case class ArrayRead[T](@(Child @field) arr: Exp[Array[T]], @(Child @field) x: Exp[Int]) extends Def[T] {
     def execute(frame: VirtualFrame) = {
-      math.cos(x.execute(frame))
+      arr.execute(frame)(x.execute(frame))
     }
   }
 
-  case class SinNode(@(Child @field) x: Exp[Double]) extends Def[Double] {
+  case class ArrayUpdate[T:Typ](@(Child @field) arr: Exp[Array[T]],
+    @(Child @field) index: Exp[Int],
+    @(Child @field) element: Exp[T]) extends Def[Unit] {
     def execute(frame: VirtualFrame) = {
-      math.sin(x.execute(frame))
+      val array = arr.execute(frame)
+      array(index.execute(frame)) = element.execute(frame)
     }
   }
   
-  def cos(x:Rep[Double]) = reflect(CosNode(x))
-  def sin(x:Rep[Double]) = reflect(SinNode(x))
-}
-
-trait TrigOpt extends Trig{
-  
-  override def sin(x: Rep[Double]) = x match {
-    case Const(f) => lift(math.sin(f))
-    case _ => super.sin(x)
+  case class ArrayNew[T:Manifest](@(Child @field) size: Exp[Int]) extends Def[Array[T]] {
+    def execute(frame: VirtualFrame) = {
+      val s = size.execute(frame);
+      new Array[T](s);
+    }
   }
-  
-  override def cos(x: Rep[Double]) =  x match {
-    case Const(f) => lift(math.cos(f))
-    case _ => super.cos(x)
+
+  // Is it possible to have a unified update class
+  implicit class ArrayOps[T:Typ](x: Exp[Array[T]]) {
+    def apply(y: Exp[Int]): Exp[T] = reflect(ArrayRead[T](x, y))
+    def update(y: Exp[Int], e: Exp[T]): Exp[Unit] = reflect(ArrayUpdate[T](x, y, e)) 
   }
-}
 
-
-trait TrigOptFFT extends TrigOpt {
-  val sin_values = Map(-2*Pi -> 0.0, -3.0/2*Pi -> 1.0, -Pi -> 0.0, -1.0/2*Pi -> -1.0, 0.0 -> 0.0, 1.0/2*Pi -> 1.0, Pi -> 0.0, 3.0/2*Pi -> -1.0, 2*Pi -> 0.0)
-  val cos_values = Map(-2*Pi -> 1.0, -3.0/2*Pi -> 0.0, -Pi -> -1.0, -1.0/2*Pi -> 0.0, 0.0 -> 1.0, 1.0/2*Pi -> 0.0, Pi -> -1.0, 3.0/2*Pi -> 0.0, 2*Pi -> 1.0)
-
-  override def sin(x: Rep[Double]) = x match {
-    case Const(f) => if (sin_values.contains(f)) Const(sin_values(f).asInstanceOf[Double]) else lift(math.sin(f))
-    case _ => super.sin(x)
-  }
-  
-  override def cos(x: Rep[Double]) =  x match {
-    case Const(f) => if (cos_values.contains(f)) Const(cos_values(f).asInstanceOf[Double]) else lift(math.cos(f))
-    case _ => super.cos(x)
+  object NewArray {
+    def apply[T:Typ:Manifest](n: Exp[Int]) : Exp[Array[T]] = reflect(ArrayNew[T](n))
   }
 }

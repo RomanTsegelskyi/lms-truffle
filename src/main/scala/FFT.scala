@@ -2,7 +2,7 @@ import math._
 import scala.virtualization.lms._
 
 
-trait FFT extends Trig {
+trait FFT extends TrigOptFFT with DoubleOpsFFT {
 
   case class Complex(re: Rep[Double], im: Rep[Double]) {
     def +(that: Complex) = Complex(this.re + that.re, this.im + that.im)

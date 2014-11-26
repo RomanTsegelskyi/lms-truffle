@@ -36,49 +36,20 @@ import org.scalatest._
   see:  http://hg.openjdk.java.net/graal/graal/file/483d05bf77a7/graal/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test
 */
 
-class TruffleLMSFFT extends FunSuite with FFT with TruffleLMS {
+class TruffleLMSOpt extends FunSuite with TruffleLMS with DoubleOps {
 
-  test("fft size 4") {
+  test("plus opt") {
     runtime = Truffle.getRuntime();
     frameDescriptor = new FrameDescriptor();
-
-    val truffelized = lms { x: Rep[Array[Double]] =>
-      val y = NewArray[Double](8);
-      val inList = scala.List.tabulate(4)(i => Complex(x(2 * i), x(2 * i + 1)))
-      val outList = fft(inList)
-      for (i <- 0 to 3) {
-        y(2 * i) = outList(i).re;
-        y(2 * i + 1) = outList(i).im;
-      }
-      y
+    
+    val truffelized = lms {x:Rep[Double] =>
+    	lift(1.0) + lift(2) + x
     }
 
-    val res = truffelized(Array(1.0, 0.0, 1.0, 0.0, 2.0, 0.0, 2.0, 0.0));
-    assert(res === Array(6.0, 0.0, -1.0, 1.0, 0.0, 0.0, -1.0, -1.0))
-//    println(truffelized.rootNode.block.toString)
+    val res = truffelized(2.0);
+    assert(res === 5.0)
+ //   println(truffelized.rootNode.block.toString)
   }
 
-  test("fft any size") {
-    runtime = Truffle.getRuntime();
-    frameDescriptor = new FrameDescriptor();
-
-    def fftc(size: Int) = {
-      val truffelized = lms { x: Rep[Array[Double]] =>
-        val y = NewArray[Double](2*size)
-        val inList = scala.List.tabulate(size)(i => Complex(x(2 * i), x(2 * i + 1)))
-        val outList = fft(inList)
-        for (i <- 0 to (size - 1)) {
-          y(2 * i) = outList(i).re;
-          y(2 * i + 1) = outList(i).im;
-        }
-        y
-      }
-      truffelized
-    }
-    val fft4 = fftc(4)
-    val res = fft4(Array(1.0, 0.0, 1.0, 0.0, 2.0, 0.0, 2.0, 0.0));
-    assert(res === Array(6.0, 0.0, -1.0, 1.0, 0.0, 0.0, -1.0, -1.0))
-//    println(fft4.rootNode.block.toString)
-  }
 }
 
