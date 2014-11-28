@@ -67,13 +67,13 @@ trait IntegerType extends Base with Types {
     }
   }
   
-  def int_plus(x: Exp[Int], y: Exp[Int]) = reflect(IntPlus(x,y))
-  def int_minus(x: Exp[Int], y: Exp[Int]) = reflect(IntMinus(x,y))
-  def int_times(x: Exp[Int], y: Exp[Int]) = reflect(IntTimes(x,y))
-  def int_div(x: Exp[Int], y: Exp[Int]) = reflect(IntDiv(x,y))
-  def int_equal(x: Exp[Int], y: Exp[Int]) = reflect(IntEqual(x,y))
-  def int_less(x: Exp[Int], y: Exp[Int]) = reflect(IntLess(x,y))
-  def int_mod(x: Exp[Int], y: Exp[Int]) = reflect(IntMod(x,y))
+  def int_plus(x: Exp[Int], y: Exp[Int]): Exp[Int]= reflect(IntPlus(x,y))
+  def int_minus(x: Exp[Int], y: Exp[Int]): Exp[Int] = reflect(IntMinus(x,y))
+  def int_times(x: Exp[Int], y: Exp[Int]): Exp[Int] = reflect(IntTimes(x,y))
+  def int_div(x: Exp[Int], y: Exp[Int]): Exp[Int] = reflect(IntDiv(x,y))
+  def int_equal(x: Exp[Int], y: Exp[Int]): Exp[Boolean] = reflect(IntEqual(x,y))
+  def int_less(x: Exp[Int], y: Exp[Int]): Exp[Boolean] = reflect(IntLess(x,y))
+  def int_mod(x: Exp[Int], y: Exp[Int]): Exp[Int] = reflect(IntMod(x,y))
 
   implicit class IntOps(x: Exp[Int]) {
     def +(y: Exp[Int]): Exp[Int] = int_plus(x,y)
@@ -83,5 +83,46 @@ trait IntegerType extends Base with Types {
     def ===(y: Exp[Int]): Exp[Boolean] = int_equal(x,y)
     def <(y: Exp[Int]): Exp[Boolean] = int_less(x,y)
     def %(y: Exp[Int]): Exp[Int] = int_mod(x,y)
+  }
+}
+
+trait IntegerOps extends IntegerType {
+
+  override def int_plus(x: Exp[Int], y: Exp[Int])= (x, y) match {
+    case (Const(x), Const(y)) => Const(x + y)
+    case _ => super.int_plus(x, y)
+  }
+  
+  override def int_minus(x: Rep[Int], y: Rep[Int])= (x, y) match {
+    case (Const(x), Const(y)) => Const(x - y)
+    case _ => super.int_minus(x, y)
+  }
+  
+  override def int_times(x: Rep[Int], y: Rep[Int])= (x, y) match {
+    case (Const(x), Const(y)) => Const(x * y)
+    case _ => super.int_times(x, y)
+  }
+}
+
+trait IntegerOpsPower extends IntegerOps {
+  override def int_plus(x: Rep[Int], y: Rep[Int])= (x, y) match {
+    case (x, Const(0)) => x
+    case (Const(0), y) => y
+    case _ => super.int_plus(x, y)
+  }
+  
+  override def int_minus(x: Rep[Int], y: Rep[Int])= (x, y) match {
+    case (x, Const(0)) => x
+    case _ => super.int_minus(x, y)
+  }
+  
+  override def int_times(x: Rep[Int], y: Rep[Int])= (x, y) match {
+    case (x, Const(0)) => Const(0)
+    case (Const(0), y) => Const(0)
+  	case (x, Const(1)) => x
+    case (Const(1), y) => y
+    case (x, Const(-1)) => int_minus(Const(0), x)
+    case (Const(-1), y) => int_minus(Const(0), y)
+    case _ => super.int_times(x, y)
   }
 }

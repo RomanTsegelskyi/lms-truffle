@@ -30,7 +30,7 @@ import scala.annotation.target.field
 import org.scalatest._
 import scala.virtualization.lms.common.ScalaOpsPkgExp
 
-class TruffleLMSTestPower extends FunSuite with TruffleLMS {
+class TruffleLMSTestPower extends FunSuite with TruffleLMS with IntegerOpsPower {
 
   runtime = Truffle.getRuntime();
   frameDescriptor = new FrameDescriptor();
@@ -46,7 +46,7 @@ class TruffleLMSTestPower extends FunSuite with TruffleLMS {
     val truffelized = lms { x: Rep[Int] =>
 
       def power(x: Rep[Int], y: Int): Rep[Int] = {
-        if (y == 0) 1 else x * power(x, y - 1)
+        if (y == 0) lift(1) else x * power(x, y - 1)
       }
       power(x, 6)
     }
@@ -56,12 +56,11 @@ class TruffleLMSTestPower extends FunSuite with TruffleLMS {
 
     assert(truffelized.rootNode.block.toString ===
       """Assign([0,x0,Int],GetArg(0))
-Assign([1,x1,Int],IntTimes(Sym([0,x0,Int]),Const(1)))
+Assign([1,x1,Int],IntTimes(Sym([0,x0,Int]),Sym([0,x0,Int])))
 Assign([2,x2,Int],IntTimes(Sym([0,x0,Int]),Sym([1,x1,Int])))
 Assign([3,x3,Int],IntTimes(Sym([0,x0,Int]),Sym([2,x2,Int])))
 Assign([4,x4,Int],IntTimes(Sym([0,x0,Int]),Sym([3,x3,Int])))
-Assign([5,x5,Int],IntTimes(Sym([0,x0,Int]),Sym([4,x4,Int])))
-Assign([6,x6,Int],IntTimes(Sym([0,x0,Int]),Sym([5,x5,Int])))""")
+Assign([5,x5,Int],IntTimes(Sym([0,x0,Int]),Sym([4,x4,Int])))""")
   }
 
   test("power2") {
@@ -74,7 +73,7 @@ Assign([6,x6,Int],IntTimes(Sym([0,x0,Int]),Sym([5,x5,Int])))""")
       }
       power(x, 8)
     }
-
+    println(truffelized.rootNode.block.toString);
     val result = truffelized(2)
     assert(result === 256);
   }
@@ -121,6 +120,13 @@ Assign([6,x6,Int],IntTimes(Sym([0,x0,Int]),Sym([5,x5,Int])))""")
       if (y == 0) 1 else x * power(x, y - 1)
     }
 
+    def time(s: String)(a: => Unit): Unit = {
+      val t0 = System.currentTimeMillis
+      a
+      val t1 = System.currentTimeMillis
+      println(s"$s took ${t1 - t0}ms")
+    }
+    
     val truffelized = lms[Int, Int, Int] { (x, y) => speculate(power)(x, y) }
 
     val result = truffelized(2, 6)
@@ -128,8 +134,16 @@ Assign([6,x6,Int],IntTimes(Sym([0,x0,Int]),Sym([5,x5,Int])))""")
 
     // trigger compilation for y = 4
 
+    time("No compilation") {
+      val result = truffelized(2, 1024);
+    }
+
     for (i <- 0 until 1000000)
-      truffelized(i, 4)
+      truffelized(i, 1024)
+
+    time("With compilation") {
+      val result = truffelized(2, 1014);
+    }
 
     // should be compiled now -- trigger deoptimization
     // and recompilation for y = 6

@@ -113,7 +113,6 @@ class TestTruffleLMS2 extends FunSuite with TruffleLMS {
       w()
     }
 
-    println(truffelized.rootNode.block.toString)
 
     time("A") {
       val result = truffelized(2, 6)
@@ -145,6 +144,8 @@ class TestTruffleLMS2 extends FunSuite with TruffleLMS {
       for (i <- 0 until 10)
         z += plain(i, 6)
     }
+
+        println(truffelized.rootNode.block.toString)
 
     /*
 
