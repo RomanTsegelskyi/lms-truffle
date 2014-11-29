@@ -47,7 +47,10 @@ trait SQLParser extends QueryAST {
       """[0-9]+""".r ^^ (s => Value(s.toInt))
   
     def parseAll(input: String): Operator = parseAll(stm,input) match {
-      case Success(res,_)  => res
+      case Success(res,_)  => {
+        println(res)
+        res
+      }
       case res => throw new Exception(res.toString)
     }
   }

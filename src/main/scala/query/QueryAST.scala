@@ -17,7 +17,7 @@ trait QueryAST {
   case class Group(keys: Schema, agg: Schema, parent: Operator) extends Operator
   case class HashJoin(parent1: Operator, parent2: Operator) extends Operator
 
-  // filter predicates
+//  // filter predicates
   sealed abstract class Predicate
   case class Eq(a: Ref, b: Ref) extends Predicate
 

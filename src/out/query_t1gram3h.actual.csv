@@ -1,0 +1,1 @@
+HashJoin(Scan(src/data/words.csv,Vector(Word, Value),,,false),Scan(src/data/t1gram.csv,Vector(Phrase, Year, MatchCount, VolumeCount),	,true))

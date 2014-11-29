@@ -1,0 +1,3 @@
+Project(Vector(Name),Vector(Name),Filter(Eq(Field(Flag),Value(yes)),Scan(src/data/t.csv,Vector(Name, Value, Flag),,,false)))
+Name
+B

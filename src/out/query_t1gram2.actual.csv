@@ -1,0 +1,1 @@
+Filter(Eq(Field(Phrase),Value(Auswanderung)),Scan(src/data/t1gram.csv,Vector(Phrase, Year, MatchCount, VolumeCount),	,true))

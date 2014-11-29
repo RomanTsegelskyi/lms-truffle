@@ -1,0 +1,4 @@
+Scan(src/data/t.csv,Vector(Name, Value, Flag),,,false)
+Name,Value,Flag
+A,7,no
+B,2,yes

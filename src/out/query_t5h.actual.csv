@@ -1,0 +1,1 @@
+HashJoin(Scan(src/data/t.csv,Vector(Name, Value, Flag),,,false),Project(Vector(Name),Vector(Name),Scan(src/data/t.csv,Vector(Name, Value, Flag),,,false)))
