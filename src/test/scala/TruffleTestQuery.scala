@@ -29,6 +29,8 @@ import com.oracle.truffle.api.nodes._
 import com.oracle.truffle.api.nodes.Node._
 import org.scalatest._
 import scala.annotation.meta.field
+import java.io.PrintStream
+import java.io.ByteArrayOutputStream
 
 class TruffleTestQuery extends FunSuite with QueryBase {
 
@@ -41,10 +43,16 @@ class TruffleTestQuery extends FunSuite with QueryBase {
     val descriptor: FrameDescriptor = new FrameDescriptor()
     val schema = Vector[String]("Name", "Value", "Flag")
     val delim: Char = ','
-
     val rootNode = new TRootNode(descriptor, new PrintCSVNode(new ScanNode("src/data/t.csv", schema, delim, false)))
     val target: CallTarget = runtime.createCallTarget(rootNode);
-    val result = target.call();
+    val output = new ByteArrayOutputStream()
+    scala.Console.setOut(new PrintStream(output))
+    Console.withOut(new PrintStream(output))(target.call());
+    assert(output.toString === 
+"""Name,Value,Flag
+A,7,no
+B,2,yes
+""")
   }
 
   test("ProjectTest") {
@@ -54,9 +62,36 @@ class TruffleTestQuery extends FunSuite with QueryBase {
     val outSchema = Vector[String]("Name")
     val delim: Char = ','
     val rootNode = new TRootNode(descriptor, new PrintCSVNode(
-      new ProjectNode(outSchema, outSchema, new ScanNode("src/data/t.csv", schema, delim, false))))
+    new ProjectNode(outSchema, outSchema, new ScanNode("src/data/t.csv", schema, delim, false))))
     val target: CallTarget = runtime.createCallTarget(rootNode);
-    val result = target.call();
+    val output = new ByteArrayOutputStream()
+    scala.Console.setOut(new PrintStream(output))
+    Console.withOut(new PrintStream(output))(target.call());
+    assert(output.toString === 
+"""Name
+A
+B
+""")
+  }
+  
+  test("FilterTest") {
+    val runtime: TruffleRuntime = Truffle.getRuntime()
+    val descriptor: FrameDescriptor = new FrameDescriptor()
+    val schema = Vector[String]("Name", "Value", "Flag")
+    val outSchema = Vector[String]("Name")
+    val delim: Char = ','
+    val rootNode = new TRootNode(descriptor, new PrintCSVNode(
+      new ProjectNode(outSchema, outSchema, 
+          new FilterNode(Eq(Field("Flag"), Value("yes")), new ScanNode("src/data/t.csv", schema, delim, false)))))
+    val target: CallTarget = runtime.createCallTarget(rootNode);
+    val output = new ByteArrayOutputStream()
+    scala.Console.setOut(new PrintStream(output))
+    Console.withOut(new PrintStream(output))(target.call());
+    assert(output.toString === 
+"""Name
+B
+""")
+    
   }
 
 }
