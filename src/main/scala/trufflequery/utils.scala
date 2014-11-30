@@ -1,4 +1,6 @@
-package query
+
+
+package trufflequery
 
 import java.io._
 import org.scalatest.FunSuite
