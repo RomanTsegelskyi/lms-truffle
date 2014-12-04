@@ -1,1 +1,0 @@
-Join(Scan(src/data/words.csv,Vector(Word, Value),,,false),Project(Vector(Word, Year, MatchCount, VolumeCount),Vector(Phrase, Year, MatchCount, VolumeCount),Scan(src/data/t1gram.csv,Vector(Phrase, Year, MatchCount, VolumeCount),	,true)))

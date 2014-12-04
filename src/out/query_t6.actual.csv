@@ -1,1 +1,0 @@
-Group(Vector(Name),Vector(Value),Scan(src/data/t.csv,Vector(Name, Value, Flag),,,false))

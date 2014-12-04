@@ -22,13 +22,13 @@
  */
 
 import com.oracle.truffle.api._
-import com.oracle.truffle.api.frame._;
-import com.oracle.truffle.api.nodes._;
-import com.oracle.truffle.api.nodes.Node._;
-
+import com.oracle.truffle.api.frame._
+import com.oracle.truffle.api.nodes._
+import com.oracle.truffle.api.nodes.Node._
 import scala.annotation.target.field
-
 import org.scalatest._
+import FFT.FFT
+import LMS.TruffleLMS
 
 /* 
   Scala adaptation of Truffle API Test Suite
@@ -37,6 +37,13 @@ import org.scalatest._
 */
 
 class TruffleLMSFFT extends FunSuite with FFT with TruffleLMS {
+
+  def time(s: String)(a: => Unit): Unit = {
+    val t0 = System.currentTimeMillis
+    a
+    val t1 = System.currentTimeMillis
+    println(s"$s took ${t1 - t0}ms")
+  }
 
   test("fft size 4") {
     runtime = Truffle.getRuntime();
@@ -54,8 +61,8 @@ class TruffleLMSFFT extends FunSuite with FFT with TruffleLMS {
     }
 
     val res = truffelized(Array(1.0, 0.0, 1.0, 0.0, 2.0, 0.0, 2.0, 0.0));
-    assert(res === Array(6.0, 0.0, -1.0, 1.0, 0.0, 0.0, -1.0, -1.0))
-//    println(truffelized.rootNode.block.toString)
+//    assert(res === Array(6.0, 0.0, -1.0, 1.0, 0.0, 0.0, -1.0, -1.0))
+        println(truffelized.rootNode.block.toString)
   }
 
   test("fft any size") {
@@ -64,9 +71,11 @@ class TruffleLMSFFT extends FunSuite with FFT with TruffleLMS {
 
     def fftc(size: Int) = {
       val truffelized = lms { x: Rep[Array[Double]] =>
-        val y = NewArray[Double](2*size)
+        val y = NewArray[Double](2 * size)
         val inList = scala.List.tabulate(size)(i => Complex(x(2 * i), x(2 * i + 1)))
+        println(inList)
         val outList = fft(inList)
+        println(outList)
         for (i <- 0 to (size - 1)) {
           y(2 * i) = outList(i).re;
           y(2 * i + 1) = outList(i).im;
@@ -78,7 +87,11 @@ class TruffleLMSFFT extends FunSuite with FFT with TruffleLMS {
     val fft4 = fftc(4)
     val res = fft4(Array(1.0, 0.0, 1.0, 0.0, 2.0, 0.0, 2.0, 0.0));
     assert(res === Array(6.0, 0.0, -1.0, 1.0, 0.0, 0.0, -1.0, -1.0))
-//    println(fft4.rootNode.block.toString)
+    time("A") {
+      for (i <- 0 until 100000)
+        fft4(Array(1.0, 0.0, 1.0, 0.0, 2.0, 0.0, 2.0, 0.0))
+    }
+        println(fft4.rootNode.block.toString)
   }
 }
 

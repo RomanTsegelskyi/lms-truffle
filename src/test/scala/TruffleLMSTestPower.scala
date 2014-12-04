@@ -29,6 +29,8 @@ import math._
 import scala.annotation.target.field
 import org.scalatest._
 import scala.virtualization.lms.common.ScalaOpsPkgExp
+import LMS.IntegerOpsPower
+import LMS.TruffleLMS
 
 class TruffleLMSTestPower extends FunSuite with TruffleLMS with IntegerOpsPower {
 

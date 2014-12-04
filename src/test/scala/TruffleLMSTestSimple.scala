@@ -28,6 +28,8 @@ import com.oracle.truffle.api.nodes.Node._
 import scala.annotation.target.field
 import org.scalatest._
 import scala.virtualization.lms.common.ScalaOpsPkgExp
+import LMS.Trig
+import LMS.TruffleLMS
 
 class TruffleLMSTestSimple extends FunSuite with TruffleLMS with Trig {
 

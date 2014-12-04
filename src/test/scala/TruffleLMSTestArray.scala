@@ -22,13 +22,12 @@
  */
 
 import com.oracle.truffle.api._
-import com.oracle.truffle.api.frame._;
-import com.oracle.truffle.api.nodes._;
-import com.oracle.truffle.api.nodes.Node._;
-
+import com.oracle.truffle.api.frame._
+import com.oracle.truffle.api.nodes._
+import com.oracle.truffle.api.nodes.Node._
 import scala.annotation.target.field
-
 import org.scalatest._
+import LMS.TruffleLMS
 
 /* 
   Scala adaptation of Truffle API Test Suite

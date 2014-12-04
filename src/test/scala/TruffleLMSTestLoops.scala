@@ -28,6 +28,7 @@ import com.oracle.truffle.api.nodes.Node._
 import math._
 import scala.annotation.target.field
 import org.scalatest._
+import LMS.TruffleLMS
 
 
 class TestTruffleLMS2 extends FunSuite with TruffleLMS {
@@ -94,7 +95,7 @@ class TestTruffleLMS2 extends FunSuite with TruffleLMS {
       }
       FF()
     }
-
+    println(plain.rootNode.block.toString)
     val truffelized = lms[Int, Int, Int] { (x, y) =>
       val w = cell(0)
       val i = cell(0)
