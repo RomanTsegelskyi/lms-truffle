@@ -68,6 +68,9 @@ trait DoubleType extends Base with Types {
     def /(y: Exp[Double]): Exp[Double] = double_div(x, y)
   }
 
+  implicit class VarOps[T](x: Var[T]) {
+    def +(y: Exp[Double]): Exp[Double] = lift(1)
+  }
 }
 
 trait DoubleOps extends DoubleType {

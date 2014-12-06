@@ -68,6 +68,7 @@ trait IntegerType extends Base with Types {
     }
   }
   
+  
   def int_plus(x: Exp[Int], y: Exp[Int]): Exp[Int]= reflect(IntPlus(x,y))
   def int_minus(x: Exp[Int], y: Exp[Int]): Exp[Int] = reflect(IntMinus(x,y))
   def int_times(x: Exp[Int], y: Exp[Int]): Exp[Int] = reflect(IntTimes(x,y))
@@ -85,6 +86,7 @@ trait IntegerType extends Base with Types {
     def <(y: Exp[Int]): Exp[Boolean] = int_less(x,y)
     def %(y: Exp[Int]): Exp[Int] = int_mod(x,y)
   }
+  
 }
 
 trait IntegerOps extends IntegerType {
