@@ -27,36 +27,23 @@ import com.oracle.truffle.api._
 import com.oracle.truffle.api.frame._
 import com.oracle.truffle.api.nodes._
 import com.oracle.truffle.api.nodes.Node._
+import scala.annotation.target.field
 import org.scalatest._
-import SQL.Scanner
 
-trait Types extends Base {
+trait StringType extends Base with Types {
 
-  implicit object unitTyp extends Typ[Unit]{
-    def slotKind = FrameSlotKind.Object
-  }
-  
-  implicit object intTyp extends Typ[Int] {
-    def slotKind = FrameSlotKind.Int
-  }
-  implicit object boolTyp extends Typ[Boolean] {
-    def slotKind = FrameSlotKind.Boolean
+   case class StringPlus(@(Child @field) x: Exp[String], @(Child @field) y: Exp[String]) extends Def[String] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) + y.execute(frame)
+    }
   }
 
-  implicit object doubleTyp extends Typ[Double] {
-    def slotKind = FrameSlotKind.Double
-  }
-  
-  implicit object stringTyp extends Typ[String] {
-    def slotKind = FrameSlotKind.Object
-  }
-  
-  implicit def arrayTyp[T:Typ] = new Typ[Array[T]] {
-    def slotKind = FrameSlotKind.Object
-  }
-  
-  implicit def scannerTyp = new Typ[Scanner] {
-    def slotKind = FrameSlotKind.Object
+  def string_plus(x: Exp[String], y: Exp[String]): Exp[String] = reflect(StringPlus(x,y))
+
+  implicit class StringOps(x: Rep[String]) {
+    def +(y: Exp[String]): Exp[String] = string_plus(x, y)
   }
 
 }
+
+

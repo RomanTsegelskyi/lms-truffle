@@ -22,6 +22,7 @@
  */
 
 package LMS
+import SQL.Scanner
 
 import com.oracle.truffle.api._
 import com.oracle.truffle.api.frame._
@@ -30,48 +31,46 @@ import com.oracle.truffle.api.nodes.Node._
 import scala.annotation.target.field
 import org.scalatest._
 
+trait ScannerType extends Base with Types {
 
-trait ControlFlow extends Primitives with Base {
-
-  case class Loop(shy: Boolean, @(Child @field)body: Block[Boolean]) extends Def[Boolean] {
-    def execute(frame: VirtualFrame): Boolean = {
-      //println(s"interpreted: ${CompilerDirectives.inInterpreter}")
-      //while(body.execute(frame)) {}
-      while ({
-        if (CompilerAsserts.compilationConstant(shy && CompilerDirectives.inInterpreter)) {
-          if (body.execute(frame)) return true else false
-        } else {
-          body.execute(frame)
-        }
-      }) { }
-      false
-    }
-  }
-
-  def loop(body: => Exp[Boolean]): Exp[Boolean] = reflect(Loop(false,reify(body)))
-
-  def loopShy(body: => Exp[Boolean]): Exp[Boolean] = reflect(Loop(true,reify(body)))
-
-  case class IfElse[@specialized T](c: Exp[Boolean], a: Block[T], b: Block[T]) extends Def[T] {
-    def execute(frame: VirtualFrame): T = {
-      if (c.execute(frame)) a.execute(frame) else b.execute(frame)
-    }
-  }
-
-  def cond[T:Typ](c: Exp[Boolean])(a: => Exp[T])(b: => Exp[T]): Exp[T] = {
-    reflect(IfElse(c, reify(a), reify(b)))
-  }
-  
-  case class WhileLoop[@specialized T](cond : Rep[Boolean], @(Child @field)body: Block[T]) extends Def[Unit] {
+  case class ScannerNew(@(Child @field) filename: Rep[String]) extends Def[Scanner] {
     def execute(frame: VirtualFrame) = {
-      while (cond.execute(frame)) {
-    	  body.execute(frame)
-      }
+      val descr = frame.getFrameDescriptor(); 
+      val slot = descr.addFrameSlot("tscanner", FrameSlotKind.Object);
+      val s = new Scanner(filename.execute(frame))
+      frame.setObject(slot, s);
+      s
     }
   }
-  
-  def whileloop[T:Typ](c: Exp[Boolean])(b: => Exp[T]): Exp[Unit] = {
-    reflect(WhileLoop(c, reify(b)))
+
+  case class ScannerNext(@(Child @field) s: Rep[Scanner], d: Char) extends Def[String] {
+    def execute(frame: VirtualFrame) = {
+      val str = s.execute(frame).next(d);
+      str
+    }
   }
-  
+
+  case class ScannerHasNext(@(Child @field) s: Rep[Scanner]) extends Rep[Boolean] {
+    def execute(frame: VirtualFrame) = {
+      s.execute(frame).hasNext;
+    }
+  }
+
+  case class ScannerClose(@(Child @field) s: Rep[Scanner]) extends Def[Unit] {
+    def execute(frame: VirtualFrame) = {
+      s.execute(frame).close;
+    }
+  }
+
+  implicit class RepScannerOps(s: Rep[Scanner]) {
+    def next(d: Char) = scannerNext(s, d)
+    def hasNext = scannerHasNext(s)
+    def close = scannerClose(s)
+  }
+
+  def newScanner(fn: Rep[String]): Rep[Scanner] = reflect(ScannerNew(fn))
+  def scannerNext(s: Rep[Scanner], d: Char): Rep[String] = reflect(ScannerNext(s, d))
+  def scannerHasNext(s: Rep[Scanner]): Rep[Boolean] = ScannerHasNext(s)
+  def scannerClose(s: Rep[Scanner]): Rep[Unit] = reflect(ScannerClose(s))
 }
+

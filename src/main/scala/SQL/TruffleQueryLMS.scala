@@ -1,114 +1,92 @@
-//package SQL
-//
-//import com.oracle.truffle.api._
-//import com.oracle.truffle.api.frame._
-//import com.oracle.truffle.api.nodes._
-//import com.oracle.truffle.api.nodes.Node._
-//import java.io.FileReader
-//import java.io.BufferedReader
-//import LMS.TruffleLMS
-//
-//class TruffleQueryLMS extends QueryAST with TruffleLMS {
-//
-//  def resultSchema(o: OperatorNode): Schema = o match {
-////    case ScanNode(_, schema, _, _) => schema
-//    case FilterNode(pred, parent) => resultSchema(parent)
-//    case ProjectNode(schema, _, _) => schema
-//    case JoinNode(left, right) => resultSchema(left) ++ resultSchema(right)
-//    case PrintCSVNode(parent) => Schema()
-//  }
-//
-//  val defaultFieldDelimiter = ','
-//
-//  def printSchema(schema: Schema) = println(schema.mkString(defaultFieldDelimiter.toString))
-//
-//  def printFields(fields: Fields) = printf(fields.map { _ => "%s" }.mkString("", defaultFieldDelimiter.toString, "\n"), fields: _*)
-//
-//  //  def fieldsEqual(a: Fields, b: Fields) = (a zip b).foldLeft(lift(true)) { (a,b) => a && b._1 == b._2 }
-//  //
-//  //  def fieldsHash(a: Fields) = a.foldLeft(unit(0L)) { _ * 41L + _.HashCode }
-//
-//  // base types
-//  abstract class BaseNode extends Node with Product {
-//    def prettyString = productPrefix + "(" + ((0 until productArity) map productElement mkString ",") + ")"
-//    override def toString = prettyString
-//  }
-//
-//  type Table
-//  type Schema = Vector[String]
-//  type Fields = Vector[Rep[String]]
-//
-//  case class Record(fields: Fields, schema: Schema) {
-//    def apply(key: String): Rep[String] = fields(schema indexOf key)
-//    def apply(keys: Schema): Fields = keys.map(this apply _)
-//  }
-//
-//  // relational algebra ops
-//  abstract class OperatorNode extends BaseNode {
-//    def execute(frame: VirtualFrame)(yld: Record => Rep[Unit]): Rep[Unit]
-//  }
-//
-////  case class ScanNode(filename: String, schema: Schema, fieldDelimiter: Char, externalSchema: Boolean) extends OperatorNode {
-////    def execute(f: VirtualFrame)(yld: Record => Unit): Unit = {
-////      val s = new Scanner(filename)
-////      val last = schema.last
-////      def nextRecord = Record(schema.map { x => s.next(if (x == last) '\n' else fieldDelimiter) }, schema)
-////      if (!externalSchema) {
-////        nextRecord
-////      }
-////      while (s.hasNext) yld(nextRecord)
-////      s.close
-////    }
-////  }
-//
-//  case class PrintCSVNode(parent: OperatorNode) extends OperatorNode {
-//    def execute(frame: VirtualFrame)(yld: Record => Rep[Unit]): Rep[Unit] = {
-//      val schema = resultSchema(parent)
-//      printSchema(schema)
-//      parent.execute(frame) { rec => printFields(rec.fields) }
-//    }
-//  }
-//
-//  case class ProjectNode(outSchema: Schema, inSchema: Schema, parent: OperatorNode) extends OperatorNode {
-//    def execute(frame: VirtualFrame)(yld: Record => Rep[Unit]): Rep[Unit] = {
-//      parent.execute(frame) { rec => yld(Record(rec(inSchema), outSchema)) }
-//    }
-//  }
-//
-//  case class FilterNode(pred: Predicate, parent: OperatorNode) extends OperatorNode {
-//    def execute(frame: VirtualFrame)(yld: Record => Rep[Unit]): Rep[Unit] = {
-//      parent.execute(frame) { rec => if (evalPred(pred)(rec) == lift(true)) yld(rec) }
-//    }
-//  }
-//
-//  case class JoinNode(left: OperatorNode, right: OperatorNode) extends OperatorNode {
-//    def execute(frame: VirtualFrame)(yld: Record => Rep[Unit]): Rep[Unit] = {
-//      left.execute(frame) { rec1 =>
-//        right.execute(frame) { rec2 =>
+package SQL
+
+import com.oracle.truffle.api._
+import com.oracle.truffle.api.frame._
+import com.oracle.truffle.api.nodes._
+import com.oracle.truffle.api.nodes.Node._
+import java.io.FileReader
+import java.io.BufferedReader
+import LMS.TruffleLMS
+
+object query_staged0 {
+trait QueryCompiler extends TruffleLMS with StagedQueryProcessor {
+  override def version = "query_staged0"
+
+/**
+Low-Level Processing Logic
+--------------------------
+*/
+  type Fields = Vector[Rep[String]]
+
+  case class Record(fields: Fields, schema: Schema) {
+    def apply(key: String): Rep[String] = fields(schema indexOf key)
+    def apply(keys: Schema): Fields = keys.map(this apply _)
+  }
+
+  def processCSV(filename: Rep[String], schema: Schema, fieldDelimiter: Char, externalSchema: Boolean)(yld: Record => Rep[Unit]): Rep[Unit] = {
+    val s = newScanner(filename)
+    val last = schema.last
+    def nextRecord = Record(schema.map{x => s.next(if (x==last) '\n' else fieldDelimiter)}, schema)
+    if (!externalSchema) {
+      // the right thing would be to dynamically re-check the schema,
+      // but it clutters the generated code
+      // schema.foreach(f => if (s.next != f) println("ERROR: schema mismatch"))
+      nextRecord // ignore csv header
+    }
+    whileloop(s.hasNext) {yld(nextRecord)}
+    s.close
+  }
+
+  def printSchema(schema: Schema) = println(schema.mkString(defaultFieldDelimiter.toString))
+
+  def printFields(fields: Fields) = printf(fields.map{_ => "%s"}.mkString("", defaultFieldDelimiter.toString, "\n"), fields: _*)
+
+//  def fieldsEqual(a: Fields, b: Fields) = (a zip b).foldLeft(lift(true)) { (a,b) => a && b._1 == b._2 }
+
+/**
+Query Interpretation = Compilation
+----------------------------------
+*/
+  def evalPred(p: Predicate)(rec: Record): Rep[Boolean] = p match {
+    case Eq(a1, a2) => evalRef(a1)(rec) == evalRef(a2)(rec)
+  }
+
+  def evalRef(r: Ref)(rec: Record): Rep[String] = r match {
+    case Field(name) => rec(name)
+    case Value(x) => x.toString
+  }
+
+  def resultSchema(o: Operator): Schema = o match {
+    case Scan(_, schema, _, _)   => schema
+    case Filter(pred, parent)    => resultSchema(parent)
+    case Project(schema, _, _)   => schema
+    case Join(left, right)       => resultSchema(left) ++ resultSchema(right)
+    case Group(keys, agg, parent)=> keys ++ agg
+    case HashJoin(left, right)   => resultSchema(left) ++ resultSchema(right)
+    case PrintCSV(parent)        => Schema()
+  }
+
+  def execOp(o: Operator)(yld: Record => Rep[Unit]): Rep[Unit] = o match {
+    case Scan(filename, schema, fieldDelimiter, externalSchema) =>
+      processCSV(filename, schema, fieldDelimiter, externalSchema)(yld)
+//    case Filter(pred, parent) =>
+//      execOp(parent) { rec => if (evalPred(pred)(rec)) yld(rec) }
+    case Project(newSchema, parentSchema, parent) =>
+      execOp(parent) { rec => yld(Record(rec(parentSchema), newSchema)) }
+//    case Join(left, right) =>
+//      execOp(left) { rec1 =>
+//        execOp(right) { rec2 =>
 //          val keys = rec1.schema intersect rec2.schema
-//          if (rec1(keys) == rec2(keys))
+//          if (fieldsEqual(rec1(keys), rec2(keys)))
 //            yld(Record(rec1.fields ++ rec2.fields, rec1.schema ++ rec2.schema))
 //        }
 //      }
-//    }
-//  }
-//
-//  // filter predicates
-//  abstract class Predicate
-//  case class Eq(a: Ref, b: Ref) extends Predicate
-//
-//  sealed abstract class Ref
-//  case class Field(name: String) extends Ref
-//  case class Value(x: Any) extends Ref
-//
-//  def evalPred(p: Predicate)(rec: Record): Rep[Boolean] = p match {
-//    case Eq(a1, a2) => evalRef(a1)(rec) == evalRef(a2)(rec)
-//  }
-//
-//  def evalRef(r: Ref)(rec: Record): Rep[String] = r match {
-//    case Field(name) => rec(name)
-//    case Value(x) => x.toString
-//  }
-//
-//  def Schema(schema: String*): Schema = schema.toVector
-//}
+//    case Group(keys, agg, parent) => ???
+//    case HashJoin(left, right) => ???
+    case PrintCSV(parent) =>
+      val schema = resultSchema(parent)
+      printSchema(schema)
+      execOp(parent) { rec => printFields(rec.fields) }
+  }
+  def execQuery(q: Operator): Unit = execOp(q) { _ => }
+}}

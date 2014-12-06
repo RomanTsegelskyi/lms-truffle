@@ -8,6 +8,7 @@ import org.scalatest._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 import scala.annotation.meta.field
+import SQL.Scanner
 
 object query_unstaged {
   trait QueryBase extends PlainQueryProcessor {
@@ -26,12 +27,11 @@ object query_unstaged {
     abstract class OperatorNode extends Node with Product {
       def prettyString = productPrefix + "(" + ((0 until productArity) map productElement mkString ",") + ")"
       override def toString = prettyString
-      def execute(frame:VirtualFrame):List[Record]
+      def execute(frame: VirtualFrame)(yld: Record => Unit)
     }
 
     case class ProcessCSVNode(filename: String, schema: Schema, fieldDelimiter: Char, externalSchema: Boolean) extends OperatorNode {
-      def execute(frame: VirtualFrame): List[Record] = {
-        var res = List[Record]();
+      def execute(frame: VirtualFrame)(yld: Record => Unit) = {
         val s = new Scanner(filename)
         val last = schema.last
         def nextRecord = Record(schema.map { x => s.next(if (x == last) '\n' else fieldDelimiter) }, schema)
@@ -42,95 +42,74 @@ object query_unstaged {
           nextRecord // ignore csv header
         }
         while (s.hasNext) {
-          val r = nextRecord
-          res = res :+ r
+          yld(nextRecord)
         }
         s.close
-        res
       }
     }
 
     case class ProjectNode(newSchema: Schema, parentSchema: Schema, parent: OperatorNode) extends OperatorNode {
-      def execute(frame: VirtualFrame): List[Record] = {
-        val records = parent.execute(frame);
-        val l = records.map { x => Record(x(parentSchema), newSchema) }
-        l
+      def execute(frame: VirtualFrame)(yld: Record => Unit) = {
+        parent.execute(frame) { rec => yld(Record(rec(parentSchema), newSchema)) }
       }
     }
 
     case class FilterNode(pred: Predicate, parent: OperatorNode) extends OperatorNode {
-      def execute(frame: VirtualFrame): List[Record] = {
-        val records = parent.execute(frame);
-        val l = records.filter { x => evalPred(pred)(x) }
-        l
+      def execute(frame: VirtualFrame)(yld: Record => Unit) = {
+        parent.execute(frame) { rec => if (evalPred(pred)(rec)) yld(rec) }
       }
     }
 
     case class JoinNode(left: OperatorNode, right: OperatorNode) extends OperatorNode {
-      def execute(frame: VirtualFrame): List[Record] = {
-        val leftr = left.execute(frame);
-        val rightr = right.execute(frame);
-        var res = List[Record]();
-        leftr.foreach {
-          rec1 =>
-            rightr.foreach { rec2 =>
-              val keys = rec1.schema intersect rec2.schema
-              if (rec1(keys) == rec2(keys))
-                res = res :+ Record(rec1.fields ++ rec2.fields, rec1.schema ++ rec2.schema)
-
-            }
+      def execute(frame: VirtualFrame)(yld: Record => Unit) = {
+        left.execute(frame) { rec1 =>
+          right.execute(frame) { rec2 =>
+            val keys = rec1.schema intersect rec2.schema
+            if (rec1(keys) == rec2(keys))
+              yld(Record(rec1.fields ++ rec2.fields, rec1.schema ++ rec2.schema))
+          }
         }
-        res
       }
     }
 
     case class GroupNode(keys: Schema, agg: Schema, parent: OperatorNode) extends OperatorNode {
-      def execute(frame: VirtualFrame): List[Record] = {
+      def execute(frame: VirtualFrame)(yld: Record => Unit) = {
         val hm = new HashMap[Fields, Seq[Int]]
-        val records = parent.execute(frame);
-        var res = List[Record]();
-        records.foreach { rec =>
+        parent.execute(frame) { rec =>
           val kvs = rec(keys)
           val sums = hm.getOrElseUpdate(kvs, agg.map(_ => 0))
           hm(kvs) = (sums, rec(agg).map(_.toInt)).zipped map (_ + _)
         }
-        hm.foreach {
+        hm foreach {
           case (k, a) =>
-            res = res :+ Record(k ++ a.map(_.toString), keys ++ agg)
+            yld(Record(k ++ a.map(_.toString), keys ++ agg))
         }
-        res
       }
     }
 
     case class HashJoinNode(left: OperatorNode, right: OperatorNode) extends OperatorNode {
-      def execute(frame: VirtualFrame): List[Record] = {
+      def execute(frame: VirtualFrame)(yld: Record => Unit) = {
         val keys = resultSchema(left) intersect resultSchema(right)
         val hm = new HashMap[Fields, ArrayBuffer[Record]]
-        var res = List[Record]();
-        val recl = left.execute(frame);
-        val recr = right.execute(frame);
-        recl.foreach { rec1 =>
+        left.execute(frame) { rec1 =>
           val buf = hm.getOrElseUpdate(rec1(keys), new ArrayBuffer[Record])
           buf += rec1
         }
-
-        recr.foreach { rec2 =>
+        right.execute(frame) { rec2 =>
           hm.get(rec2(keys)) foreach {
             _.foreach { rec1 =>
-              res = res :+ Record(rec1.fields ++ rec2.fields, rec1.schema ++ rec2.schema) 
+              yld(Record(rec1.fields ++ rec2.fields, rec1.schema ++ rec2.schema))
             }
           }
         }
-        res
       }
     }
 
     case class PrintCSVNode(parent: OperatorNode) extends OperatorNode {
-      def execute(frame: VirtualFrame) = {
+      def execute(frame: VirtualFrame)(yld: Record => Unit) = {
         val schema = resultSchema(parent)
         printSchema(schema)
-        parent.execute(frame).foreach { rec => printFields(rec.fields) }
-        List[Record]();
+        parent.execute(frame) { rec => printFields(rec.fields) }
       }
     }
 
@@ -177,7 +156,7 @@ object query_unstaged {
     }
     def execQuery(q: Operator): RootNode = {
       class TRootNode(desc: FrameDescriptor, @(Child @field) val block: OperatorNode) extends RootNode(null, desc) {
-        def execute(frame: VirtualFrame): List[Record] = block.execute(frame)
+        def execute(frame: VirtualFrame): AnyRef = block.execute(frame) { _ => }.asInstanceOf[AnyRef];
       }
       val descriptor: FrameDescriptor = new FrameDescriptor()
       new TRootNode(descriptor, execOp(q));

@@ -1,9 +1,9 @@
 package SQL
-import scala.virtualization.lms.common._
 import com.oracle.truffle.api._
 import com.oracle.truffle.api.frame._
 import com.oracle.truffle.api.nodes._
 import com.oracle.truffle.api.nodes.Node._
+import LMS.TruffleLMS
 
 trait QueryProcessor extends QueryAST {
   type Table
@@ -25,9 +25,14 @@ trait QueryProcessor extends QueryAST {
     schema
   }
 
-  def execQuery(o: Operator): RootNode
+  def execQuery(o: Operator)
 }
 
 trait PlainQueryProcessor extends QueryProcessor {
   type Table = String
+}
+
+trait StagedQueryProcessor extends QueryProcessor with TruffleLMS {
+  type Table = Rep[String] // dynamic filename
+// def filePath(table: String) = if (table == "?") throw new Exception("file path for table ? not available") else super.filePath(table)
 }

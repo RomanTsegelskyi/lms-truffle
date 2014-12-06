@@ -268,5 +268,5 @@ trait Base {
   }
 }
 
-trait Primitives extends Types with IntegerType with DoubleType with ArrayType
+trait Primitives extends Types with IntegerType with DoubleType with ArrayType with StringType with ScannerType with BooleanType
 trait TruffleLMS extends Base with Primitives with ControlFlow
