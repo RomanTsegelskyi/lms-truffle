@@ -6,7 +6,6 @@ trait QueryAST {
   type Table
   type Schema = Vector[String]
 		  
-    val defaultFieldDelimiter = ','
   // relational algebra ops
   sealed abstract class Operator
   case class Scan(name: Table, schema: Schema, delim: Char, extSchema: Boolean) extends Operator

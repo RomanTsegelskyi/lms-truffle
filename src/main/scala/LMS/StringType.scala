@@ -32,18 +32,25 @@ import org.scalatest._
 
 trait StringType extends Base with Types {
 
-   case class StringPlus(@(Child @field) x: Exp[String], @(Child @field) y: Exp[String]) extends Def[String] {
+  case class StringPlus(@(Child @field) x: Exp[String], @(Child @field) y: Exp[String]) extends Def[String] {
     def execute(frame: VirtualFrame) = {
       x.execute(frame) + y.execute(frame)
     }
   }
 
-  def string_plus(x: Exp[String], y: Exp[String]): Exp[String] = reflect(StringPlus(x,y))
+  case class StringEq(@(Child @field) x: Exp[String], @(Child @field) y: Exp[String]) extends Def[Boolean] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) == y.execute(frame)
+    }
+  }
+
+  def string_plus(x: Exp[String], y: Exp[String]): Exp[String] = reflect(StringPlus(x, y))
+  def string_equals(x: Exp[String], y: Exp[String]): Exp[Boolean] = reflect(StringEq(x, y))
 
   implicit class StringOps(x: Rep[String]) {
     def +(y: Exp[String]): Exp[String] = string_plus(x, y)
+    def ===(y: Exp[String]): Exp[Boolean] = string_equals(x, y)
+
   }
 
 }
-
-

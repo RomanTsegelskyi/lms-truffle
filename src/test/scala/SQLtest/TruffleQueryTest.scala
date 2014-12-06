@@ -9,9 +9,9 @@ import com.oracle.truffle.api.nodes.Node._
 class QueryTest extends TutorialFunSuite {
   val under = "query_"
 
-  trait TestDriver extends SQLParser with ExpectedASTs {
+  trait TestDriver extends SQLParser with QueryProcessor with ExpectedASTs {
     def runtest: Unit
-    def filePath(table: String) = dataFilePath(table)
+    override def filePath(table: String) = dataFilePath(table)
 
     def name: String
     def query: String
@@ -23,16 +23,33 @@ class QueryTest extends TutorialFunSuite {
   trait PlainTestDriver extends TestDriver with PlainQueryProcessor {
     override def dynamicFilePath(table: String): Table = if (table == "?") defaultEvalTable else filePath(table)
     def eval(fn: Table): Unit = {
-      val runtime: TruffleRuntime = Truffle.getRuntime()
-      val node: RootNode = execQuery(PrintCSV(parsedQuery));
-      val target: CallTarget = runtime.createCallTarget(node);
-      val output = target.call();
+      execQuery(PrintCSV(parsedQuery));
+    }
+  }
+  trait StagedTestDriver extends TestDriver with StagedQueryProcessor {
+    var dynamicFileName: Table = _
+    override def dynamicFilePath(table: String): Table = if (table == "?") dynamicFileName else lift(filePath(table))
+    def eval(fn: Table): Unit = {
+      dynamicFileName = fn
+      execQuery(PrintCSV(parsedQuery));
+    }
+  }
+  abstract class ScalaPlainQueryDriver(val name: String, val query: String) extends PlainTestDriver with QueryProcessor { q =>
+    override def runtest: Unit = {
+      test(version + " " + name) {
+        for (expectedParsedQuery <- expectedAstForTest.get(name)) {
+          assert(expectedParsedQuery == parsedQuery)
+        }
+        checkOut(name, "csv", eval(defaultEvalTable))
+      }
     }
   }
 
-  abstract class ScalaPlainQueryDriver(val name: String, val query: String) extends PlainTestDriver with QueryProcessor { q =>
+  abstract class ScalaStagedQueryDriver(val name: String, val query: String) extends StagedTestDriver with StagedQueryProcessor { q =>
+
     override def runtest: Unit = {
-      test(name) {
+      if (version == "query_staged0" && List("Group", "HashJoin").exists(parsedQuery.toString contains _)) return ()
+      test(version + " " + name) {
         for (expectedParsedQuery <- expectedAstForTest.get(name)) {
           assert(expectedParsedQuery == parsedQuery)
         }
@@ -44,7 +61,8 @@ class QueryTest extends TutorialFunSuite {
   def testquery(name: String, query: String = "") {
     val drivers: List[TestDriver] =
       List(
-        new ScalaPlainQueryDriver(name, query) with query_unstaged.QueryBase)
+        new ScalaPlainQueryDriver(name, query) with query_unstaged.QueryBase,
+        new ScalaStagedQueryDriver(name, query) with query_staged0.QueryCompiler)
     drivers.foreach(_.runtest)
   }
 

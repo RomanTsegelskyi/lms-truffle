@@ -6,15 +6,15 @@ import com.oracle.truffle.api.nodes.Node._
 import LMS.TruffleLMS
 
 trait QueryProcessor extends QueryAST {
-  type Table
   def version: String
+  val defaultFieldDelimiter = ','
 
-  def filePath(table: String): String 
+  def filePath(table: String): String = table
   def dynamicFilePath(table: String): Table
 
   def Scan(tableName: String, schema: Option[Schema], delim: Option[Char]): Scan = {
     val dfile = dynamicFilePath(tableName)
-    val (schema1, externalSchema) = schema.map(s => (s, true)).getOrElse((loadSchema(filePath(tableName)), false))
+    val (schema1, externalSchema) = schema.map(s=>(s,true)).getOrElse((loadSchema(filePath(tableName)),false))
     Scan(dfile, schema1, delim.getOrElse(defaultFieldDelimiter), externalSchema)
   }
 
@@ -25,7 +25,7 @@ trait QueryProcessor extends QueryAST {
     schema
   }
 
-  def execQuery(o: Operator)
+  def execQuery(q: Operator): Unit
 }
 
 trait PlainQueryProcessor extends QueryProcessor {
@@ -34,5 +34,5 @@ trait PlainQueryProcessor extends QueryProcessor {
 
 trait StagedQueryProcessor extends QueryProcessor with TruffleLMS {
   type Table = Rep[String] // dynamic filename
-// def filePath(table: String) = if (table == "?") throw new Exception("file path for table ? not available") else super.filePath(table)
+  override def filePath(table: String) = if (table == "?") throw new Exception("file path for table ? not available") else super.filePath(table)
 }
