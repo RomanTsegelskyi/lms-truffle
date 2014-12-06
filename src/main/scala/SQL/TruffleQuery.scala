@@ -8,17 +8,15 @@ import org.scalatest._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 import scala.annotation.meta.field
-import SQL.Scanner
 
 object query_unstaged {
   trait QueryBase extends PlainQueryProcessor {
-
+	  override def version = "query_unstaged"
     /**
      * Low-Level Processing Logic
      * --------------------------
      */
     type Fields = Vector[String]
-    def version = "unstaged"
     case class Record(fields: Fields, schema: Schema) {
       def apply(key: String): String = fields(schema indexOf key)
       def apply(keys: Schema): Fields = keys.map(this apply _)
@@ -36,9 +34,6 @@ object query_unstaged {
         val last = schema.last
         def nextRecord = Record(schema.map { x => s.next(if (x == last) '\n' else fieldDelimiter) }, schema)
         if (!externalSchema) {
-          // the right thing would be to dynamically re-check the schema,
-          // but it clutters the generated code
-          // schema.foreach(f => if (s.next != f) println("ERROR: schema mismatch"))
           nextRecord // ignore csv header
         }
         while (s.hasNext) {
@@ -154,12 +149,15 @@ object query_unstaged {
       case PrintCSV(parent) =>
         new PrintCSVNode(execOp(parent))
     }
-    def execQuery(q: Operator): RootNode = {
+    def execQuery(q: Operator): Unit = {
       class TRootNode(desc: FrameDescriptor, @(Child @field) val block: OperatorNode) extends RootNode(null, desc) {
         def execute(frame: VirtualFrame): AnyRef = block.execute(frame) { _ => }.asInstanceOf[AnyRef];
       }
+      val runtime: TruffleRuntime = Truffle.getRuntime()
       val descriptor: FrameDescriptor = new FrameDescriptor()
-      new TRootNode(descriptor, execOp(q));
+      val node: RootNode = new TRootNode(descriptor, execOp(q))
+      val target: CallTarget = runtime.createCallTarget(node);
+      val output = target.call();
     }
   }
 }

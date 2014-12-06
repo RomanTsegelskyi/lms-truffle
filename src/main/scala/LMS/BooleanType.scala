@@ -38,10 +38,18 @@ trait BooleanType extends Base with Types {
     }
   }
 
-  def boolean_eq(x: Exp[Boolean], y: Exp[Boolean]): Exp[Boolean] = reflect(BooleanEq(x,y))
+  case class BooleanAnd(@(Child @field) x: Exp[Boolean], @(Child @field) y: Exp[Boolean]) extends Def[Boolean] {
+    def execute(frame: VirtualFrame) = {
+      x.execute(frame) && y.execute(frame)
+    }
+  }
+
+  def boolean_eq(x: Exp[Boolean], y: Exp[Boolean]): Exp[Boolean] = reflect(BooleanEq(x, y))
+  def boolean_and(x: Exp[Boolean], y: Exp[Boolean]): Exp[Boolean] = reflect(BooleanAnd(x, y))
 
   implicit class BooleanOps(x: Exp[Boolean]) {
     def ===(y: Exp[Boolean]): Exp[Boolean] = boolean_eq(x, y)
+    def &&(y: Exp[Boolean]): Exp[Boolean] = boolean_and(x, y)
   }
 
 }

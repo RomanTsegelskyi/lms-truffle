@@ -37,7 +37,8 @@ trait ScannerType extends Base with Types {
     def execute(frame: VirtualFrame) = {
       val descr = frame.getFrameDescriptor(); 
       val slot = descr.addFrameSlot("tscanner", FrameSlotKind.Object);
-      val s = new Scanner(filename.execute(frame))
+      val fn = filename.execute(frame)
+      val s = new Scanner(fn)
       frame.setObject(slot, s);
       s
     }

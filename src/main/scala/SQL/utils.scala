@@ -1,9 +1,4 @@
-
-
-
-
 package SQL
-
 import java.io._
 import org.scalatest.FunSuite
 

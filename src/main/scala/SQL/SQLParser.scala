@@ -1,5 +1,4 @@
-package SQL;
-
+package SQL
 trait SQLParser extends QueryAST {
   import scala.util.parsing.combinator._
 
