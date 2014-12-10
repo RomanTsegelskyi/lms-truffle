@@ -35,20 +35,24 @@ import LMS.TruffleLMS
   see:  http://hg.openjdk.java.net/graal/graal/file/483d05bf77a7/graal/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test
 */
 
-class TruffleLMSTestVar extends FunSuite with TruffleLMS {
-  
-  test("simple assignment") {
+class TruffleLMSTestControlFlow extends FunSuite with TruffleLMS {
+
+  test("simple loop") {
     runtime = Truffle.getRuntime();
     frameDescriptor = new FrameDescriptor();
-    val truffelized = lms {x:Rep[Int] =>
-    	val y = cell(2);
-    	y.update(int_plus(y(), 1));
-    	y()
-    }
 
-    val result = truffelized(5)
-    println(truffelized.rootNode.block.toString)
-    assert(result === 3);
+    val t = lms { x: Rep[Unit] =>
+      val i = cell(0)
+      whileloop(i() < 10) {
+        i.update(i() + 1)
+      }
+      i()
+    }
+    println(t.rootNode.block)
+    val res = t();
+    println(res)
+    
+
   }
 }
 

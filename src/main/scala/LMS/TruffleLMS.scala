@@ -97,21 +97,25 @@ trait Base {
   case class Assign[@specialized T:Typ](slot: FrameSlot, @(Child @field) d: Def[T]) extends Stm {
     val kind = slot.getKind
     def execute(frame: VirtualFrame): Unit = {
+      println("Slot = " + slot)
+      println("Kind = " + kind)
+      val e = d.execute(frame)
+      println("executed = " + e)
       kind match {
         case FrameSlotKind.Int =>
-          frame.setInt(slot, d.execute(frame).asInstanceOf[Int])
+          frame.setInt(slot, e.asInstanceOf[Int])
         case FrameSlotKind.Boolean =>
-          frame.setBoolean(slot, d.execute(frame).asInstanceOf[Boolean])
+          frame.setBoolean(slot, e.asInstanceOf[Boolean])
         case FrameSlotKind.Long =>
-          frame.setLong(slot, d.execute(frame).asInstanceOf[Long])
+          frame.setLong(slot, e.asInstanceOf[Long])
         case FrameSlotKind.Double =>
-          frame.setDouble(slot, d.execute(frame).asInstanceOf[Double])
+          frame.setDouble(slot, e.asInstanceOf[Double])
         case FrameSlotKind.Float =>
-          frame.setFloat(slot, d.execute(frame).asInstanceOf[Float])
+          frame.setFloat(slot, e.asInstanceOf[Float])
         case FrameSlotKind.Byte =>
-          frame.setByte(slot, d.execute(frame).asInstanceOf[Byte])
+          frame.setByte(slot, e.asInstanceOf[Byte])
         case _ =>
-          frame.setObject(slot, d.execute(frame))
+          frame.setObject(slot, e.asInstanceOf[T])
       }
     }
   }
@@ -120,6 +124,7 @@ trait Base {
     @ExplodeLoop def execute(frame: VirtualFrame): T = {
       var i = 0
       while (i < stms.length) {
+//        println(i)
         stms(i).execute(frame)
         i += 1
       }

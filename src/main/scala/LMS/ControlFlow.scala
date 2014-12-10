@@ -52,17 +52,17 @@ trait ControlFlow extends Primitives with Base {
 
   def loopShy(body: => Exp[Boolean]): Exp[Boolean] = reflect(Loop(true,reify(body)))
 
-  case class IfElse[@specialized T](c: Exp[Boolean], a: Block[T], b: Block[T]) extends Def[T] {
+  case class IfElse[@specialized T](c: Block[Boolean], a: Block[T], b: Block[T]) extends Def[T] {
     def execute(frame: VirtualFrame): T = {
       if (c.execute(frame)) a.execute(frame) else b.execute(frame)
     }
   }
 
-  def cond[T:Typ](c: Exp[Boolean])(a: => Exp[T])(b: => Exp[T]): Exp[T] = {
-    reflect(IfElse(c, reify(a), reify(b)))
+  def cond[T:Typ](c: => Exp[Boolean])(a: => Exp[T])(b: => Exp[T]): Exp[T] = {
+    reflect(IfElse(reify(c), reify(a), reify(b)))
   }
   
-  case class WhileLoop[@specialized T](cond : Rep[Boolean], @(Child @field)body: Block[T]) extends Def[Unit] {
+  case class WhileLoop[@specialized T](cond : Block[Boolean], @(Child @field)body: Block[T]) extends Def[Unit] {
     def execute(frame: VirtualFrame) = {
       while (cond.execute(frame)) {
     	  body.execute(frame)
@@ -70,8 +70,8 @@ trait ControlFlow extends Primitives with Base {
     }
   }
   
-  def whileloop[T:Typ](c: Exp[Boolean])(b: => Exp[T]): Exp[Unit] = {
-    reflect(WhileLoop(c, reify(b)))
+  def whileloop[T:Typ](c: => Exp[Boolean])(b: => Exp[T]): Exp[Unit] = {
+    reflect(WhileLoop(reify(c), reify(b)))
   }
   
 }

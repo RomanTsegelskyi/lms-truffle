@@ -34,7 +34,11 @@ trait ArrayType extends Base with Types {
 
   case class ArrayRead[T](@(Child @field) arr: Exp[Array[T]], @(Child @field) x: Exp[Int]) extends Def[T] {
     def execute(frame: VirtualFrame) = {
-      arr.execute(frame)(x.execute(frame))
+      val index = x.execute(frame)
+      println("index = " + index)
+      val res = arr.execute(frame)(index)
+      println(res)
+      res
     }
   }
 
