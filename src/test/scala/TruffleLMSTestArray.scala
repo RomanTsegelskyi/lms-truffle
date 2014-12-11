@@ -40,9 +40,9 @@ class TruffleLMSTestArray extends FunSuite with TruffleLMS {
   test("simple access") {
     runtime = Truffle.getRuntime();
     frameDescriptor = new FrameDescriptor();
-    
-    val truffelized = lms {x:Rep[Array[Int]] =>
-    	x(0) + x(1)
+
+    val truffelized = lms { x: Rep[Array[Int]] =>
+      x(0) + x(1)
     }
 
     var arr = Array(20, 22);
@@ -51,14 +51,14 @@ class TruffleLMSTestArray extends FunSuite with TruffleLMS {
     assert(result === 42);
 
   }
-  
+
   test("simple assignment") {
     runtime = Truffle.getRuntime();
     frameDescriptor = new FrameDescriptor();
-    
-    val truffelized = lms {x:Rep[Array[Int]] =>
-    	x(0) = 1;
-    	x(0)
+
+    val truffelized = lms { x: Rep[Array[Int]] =>
+      x(0) = 1;
+      x(0)
     }
 
     var arr = Array(20, 22);
@@ -67,14 +67,13 @@ class TruffleLMSTestArray extends FunSuite with TruffleLMS {
     assert(result === 1);
   }
 
-  
   test("sum array") {
     runtime = Truffle.getRuntime();
     frameDescriptor = new FrameDescriptor();
-    
-    val truffelized = lms {x:Rep[Array[Int]] =>
-    	val y = x(0) + x(1)
-    	y
+
+    val truffelized = lms { x: Rep[Array[Int]] =>
+      val y = x(0) + x(1)
+      y
     }
 
     var arr = Array(20, 22);
@@ -83,14 +82,13 @@ class TruffleLMSTestArray extends FunSuite with TruffleLMS {
     assert(result === 42);
   }
 
-  
-   test("sum array double") {
+  test("sum array double") {
     runtime = Truffle.getRuntime();
     frameDescriptor = new FrameDescriptor();
-    
-    val truffelized = lms {x:Rep[Array[Double]] =>
-    	val y = x(0) + x(1)
-    	y
+
+    val truffelized = lms { x: Rep[Array[Double]] =>
+      val y = x(0) + x(1)
+      y
     }
 
     var arr = Array(20.2, 22.2);
@@ -98,23 +96,44 @@ class TruffleLMSTestArray extends FunSuite with TruffleLMS {
     println(truffelized.rootNode.block.toString)
     assert(result === 42.4);
   }
-   
-   test("new array"){
+
+  test("new array") {
     runtime = Truffle.getRuntime();
     frameDescriptor = new FrameDescriptor();
-    
-    val truffelized = lms {x:Rep[Array[Double]] =>
-    	val y = NewArray[Double](2)
-    	y(0) = x(0) + lift(1)
-    	y(1) = x(1) + lift(1)
+
+    val truffelized = lms { x: Rep[Array[Double]] =>
+      val y = NewArray[Double](2)
+      y(0) = x(0) + lift(1)
+      y(1) = x(1) + lift(1)
     }
 
     var arr = Array(20.2, 22.2);
     val result = truffelized(arr)
     println(truffelized.rootNode.block.toString)
     assert(result === Array(21.2, 23.2));
-     
-   }
+
+  }
+
+  test("complex subscript array") {
+    runtime = Truffle.getRuntime();
+    frameDescriptor = new FrameDescriptor();
+
+    val truffelized = lms { x: Rep[Int] =>
+      val y = NewArray[Int](20)
+      var pos = cell(0)
+      pos.update(lift(2) + x)
+      cond (pos() === 2) { pos.update(lift(2) + x * 3)} { lift(1)}
+      y(pos()) = lift(10)
+      y
+    }
+
+    var index = 1;
+    println(truffelized.rootNode.block.toString)
+    val result = truffelized(index)
+    result.foreach{println}
+//    assert(result === Array(1, 2));
+
+  }
 
 }
 

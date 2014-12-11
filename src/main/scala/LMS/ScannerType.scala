@@ -50,7 +50,7 @@ trait ScannerType extends Base with Types {
     }
   }
 
-  case class ScannerHasNext(@(Child @field) s: Rep[Scanner]) extends Rep[Boolean] {
+  case class ScannerHasNext(@(Child @field) s: Rep[Scanner]) extends Def[Boolean] {
     def execute(frame: VirtualFrame) = {
       s.execute(frame).hasNext;
     }
@@ -70,7 +70,7 @@ trait ScannerType extends Base with Types {
 
   def newScanner(fn: Rep[String]): Rep[Scanner] = reflect(ScannerNew(fn))
   def scannerNext(s: Rep[Scanner], d: Char): Rep[String] = reflect(ScannerNext(s, d))
-  def scannerHasNext(s: Rep[Scanner]): Rep[Boolean] = ScannerHasNext(s)
+  def scannerHasNext(s: Rep[Scanner]): Rep[Boolean] = reflect(ScannerHasNext(s))
   def scannerClose(s: Rep[Scanner]): Rep[Unit] = reflect(ScannerClose(s))
 }
 

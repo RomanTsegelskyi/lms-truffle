@@ -45,7 +45,7 @@ object query_staged {
 
     def printFields(fields: Fields) = reflect(PrintFields(fields))
 
-    def fieldsEqual(a: Fields, b: Fields) = (a zip b).foldLeft(lift(true)) { (a, b) => a && b._1 === b._2 }
+    def fieldsEqual(a: Fields, b: Fields) = (a zip b).foldLeft(lift(true)) { (a, b) => a && (b._1 === b._2) }
 
     def fieldsHash(a: Fields) = a.foldLeft(lift(0)) { _ * 41 + _.HashCode }
 
@@ -140,33 +140,34 @@ object query_staged {
       val htable = NewArray[Int](hashSize)
       val i = cell(0)
       whileloop(i() < 256) {
-    	htable(i()) = - 1
+        htable(i()) = -1
         i.update(i() + 1)
       }
-//      for (i <- 0 until hashSize) { htable(i) = -1 }
+      //      for (i <- 0 until hashSize) { htable(i) = -1 }
 
       def lookup(k: Fields) = lookupInternal(k, None)
       def lookupOrUpdate(k: Fields)(init: Rep[Int] => Rep[Unit]) = lookupInternal(k, Some(init))
       def lookupInternal(k: Fields, init: Option[Rep[Int] => Rep[Unit]]): Rep[Int] = {
         val h = fieldsHash(k).toInt
-        var pos = h & hashMask
-        whileloop(boolean_and(htable(pos) != lift(-1),
-          boolean_not(fieldsEqual(keys(htable(pos)), k)))) {
-          pos = (pos + 1) & hashMask
+        var pos = cell(0)
+        pos.update(h & hashMask)
+        whileloop(boolean_and(htable(pos()) != lift(-1),
+          boolean_not(fieldsEqual(keys(htable(pos())), k)))) {
+          pos.update((pos() + 1) & hashMask)
         }
         if (init.isDefined) {
-          cond(htable(pos) === -1) {
+          cond(int_equal(htable(pos()), lift(-1))) {
             val keyPos = keyCount(): Rep[Int] // force read
             keys(keyPos) = k
             keyCount.update(int_plus(keyCount(), 1))
-            htable(pos) = keyPos
+            htable(pos()) = keyPos
             init.get(keyPos)
             keyPos
           } {
-            htable(pos)
+            htable(pos())
           }
         } else {
-          htable(pos)
+          htable(pos())
         }
       }
     }
@@ -221,7 +222,7 @@ object query_staged {
         def foreach(f: Record => Rep[Unit]): Rep[Unit] = {
           val bucket = lookup(k)
 
-          if (bucket != lift(-1)) {
+          cond(bucket != lift(-1)) {
             val bucketLen = bucketCounts(bucket)
             val bucketStart = bucket * bucketSize
             val i = cell(bucketStart)
@@ -229,17 +230,17 @@ object query_staged {
               f(Record(data(buckets(i())), schema))
               i.update(i() + 1)
             }
-          }
+          } {}
         }
       }
     }
 
     class ArrayBuffer[T: Typ: Manifest](dataSize: Int, schema: Schema) {
       val buf = schema.map(f => NewArray[T](dataSize))
-      var len = 0
+      var len = cell(0)
       def +=(x: Seq[Rep[T]]) = {
-        this(len) = x
-        len += 1
+        this(len()) = x
+        len.update(len() + 1)
       }
       def update(i: Rep[Int], x: Seq[Rep[T]]) = {
         (buf, x).zipped.foreach((b, x) => b(i) = x)

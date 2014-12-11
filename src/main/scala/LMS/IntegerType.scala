@@ -82,10 +82,11 @@ trait IntegerType extends Base with Types {
   case class IntBitAnd(@(Child @field) x: Exp[Int], @(Child @field) y: Exp[Int]) extends Def[Int] {
     def execute(frame: VirtualFrame) = {
       val res = x.execute(frame) & y.execute(frame)
-      println(res)
-      res
+      res.asInstanceOf[Int]
     }
   }
+
+
 
   def int_plus(x: Exp[Int], y: Exp[Int]): Exp[Int] = reflect(IntPlus(x, y))
   def int_minus(x: Exp[Int], y: Exp[Int]): Exp[Int] = reflect(IntMinus(x, y))
